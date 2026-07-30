@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  displayName       String?
+  role              String   // "OLD" | "NEW"
+  provider          String   @default("gmail")
+  appPassword       String   // encrypted at rest (AES-256-GCM)
+  imapHost          String   @default("imap.gmail.com")
+  imapPort          Int      @default(993)
+  smtpHost          String   @default("smtp.gmail.com")
+  smtpPort          Int      @default(465)
+  status            String   @default("ACTIVE") // ACTIVE | PAUSED | ERROR | REMOVED
+  warmupStartedAt   DateTime @default(now())
+  trustWeight       Float    @default(0)   // 0.0–1.0, computed daily
+  dailyTargetVolume Int      @default(0)    // recomputed daily by scheduler
+  sentToday         Int      @default(0)
+  lastError         String?
+  timezone          String   @default("UTC")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  sentEvents        WarmupEvent[] @relation("SenderEvents")
+  receivedEvents    WarmupEvent[] @relation("ReceiverEvents")
+}
+
+model WarmupEvent {
+  id            String   @id @default(cuid())
+  senderId      String
+  receiverId    String
+  sender        Account  @relation("SenderEvents", fields: [senderId], references: [id])
+  receiver      Account  @relation("ReceiverEvents", fields: [receiverId], references: [id])
+  subject       String
+  bodyPreview   String
+  messageId     String?  // IMAP message-id once discovered
+  status        String   @default("QUEUED") // QUEUED | SENT | DELIVERED | OPENED | REPLIED | RESCUED_FROM_SPAM | FAILED
+  scheduledFor  DateTime
+  sentAt        DateTime?
+  openedAt      DateTime?
+  repliedAt     DateTime?
+  landedInSpam  Boolean  @default(false)
+  rescuedAt     DateTime?
+  createdAt     DateTime @default(now())
+
+  @@index([status, scheduledFor])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([messageId])
+}
+
+model WarmupConfig {
+  id                     String  @id @default("singleton")
+  rampUpDays             Int     @default(28)   // days to reach full volume
+  startVolumePerDay      Int     @default(2)
+  maxVolumePerDay        Int     @default(40)
+  minDelayBetweenSendsMs Int     @default(180000)  // 3 min
+  maxDelayBetweenSendsMs Int     @default(900000)  // 15 min
+  replyProbability       Float   @default(0.35)
+  spamRescueEnabled      Boolean @default(true)
+  activeHourStart        Int     @default(8)   // 8am
+  activeHourEnd          Int     @default(20)  // 8pm
+  minPairCooldownHours   Int     @default(6)
+  aiProvider             String  @default("gemini") // gemini | groq | none
+  timezone               String  @default("UTC")
+  updatedAt              DateTime @updatedAt
+}
+
+model ContentTemplate {
+  id         String   @id @default(cuid())
+  subject    String
+  body       String
+  usedCount  Int      @default(0)
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime?
+}
