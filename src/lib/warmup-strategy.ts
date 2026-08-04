@@ -1,3 +1,5 @@
+import { SAFETY, capOldVolumeForNewPool } from "./safety";
+
 /**
  * Pure, side-effect-free warmup strategy module.
  * Takes accounts + config, returns a daily send plan.
@@ -211,6 +213,10 @@ export function buildDailyPlan(
   }
 
   const totalActive = activeAccounts.length;
+  const oldAccounts = activeAccounts.filter((a) => a.role === "OLD");
+  const newAccounts = activeAccounts.filter((a) => a.role === "NEW");
+  const oldCount = oldAccounts.length;
+  const newCount = newAccounts.length;
 
   // Compute volumes and generate timestamps
   const accountVolumes: Record<string, number> = {};
@@ -218,7 +224,21 @@ export function buildDailyPlan(
 
   for (const sender of activeAccounts) {
     const tw = trustWeights[sender.id];
-    const targetVolume = computeDailyTargetVolume(tw, totalActive, config, true, rng);
+    let targetVolume = computeDailyTargetVolume(tw, totalActive, config, true, rng);
+
+    // CRITICAL: if few NEW accounts, do not let every OLD dump full volume onto them
+    if (sender.role === "OLD") {
+      targetVolume = capOldVolumeForNewPool(
+        targetVolume,
+        oldCount,
+        newCount,
+        SAFETY.maxInboundPerReceiverPerDay
+      );
+    } else if (sender.role === "NEW") {
+      // NEW outbound stays modest early on (already ramped by trustWeight)
+      targetVolume = Math.min(targetVolume, SAFETY.maxInboundPerReceiverPerDay);
+    }
+
     accountVolumes[sender.id] = targetVolume;
 
     const timestamps = generateSendTimestamps(

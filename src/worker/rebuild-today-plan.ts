@@ -14,23 +14,16 @@ import logger from "./logger";
 
 async function main() {
   const prisma = new PrismaClient();
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
 
   try {
     const cancelled = await prisma.warmupEvent.updateMany({
-      where: {
-        status: "QUEUED",
-        scheduledFor: { gte: todayStart, lte: todayEnd },
-      },
+      where: { status: "QUEUED" },
       data: { status: "FAILED" },
     });
 
     logger.info(
       { cancelled: cancelled.count },
-      "Cancelled leftover QUEUED events for today"
+      "Cancelled ALL leftover QUEUED events before rebuild"
     );
 
     await runDailyPlanner();

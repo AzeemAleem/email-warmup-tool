@@ -7,6 +7,7 @@ import nodemailer from "nodemailer";
 import { PrismaClient } from "@prisma/client";
 import { decrypt } from "../lib/crypto";
 import { personalizeEmailContent, resolveDisplayName } from "../lib/personalize";
+import { SAFETY } from "../lib/safety";
 import { getRedis } from "./redis";
 import logger from "./logger";
 
@@ -48,10 +49,31 @@ function getTransporter(
   return transporter;
 }
 
+async function countInbound(
+  receiverId: string,
+  since: Date
+): Promise<number> {
+  return prisma.warmupEvent.count({
+    where: {
+      receiverId,
+      status: "SENT",
+      sentAt: { gte: since },
+    },
+  });
+}
+
 async function processQueuedEvents(): Promise<void> {
   const now = new Date();
+  const dayStart = new Date(now);
+  dayStart.setHours(0, 0, 0, 0);
+  const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
-  // Get all QUEUED events due now
+  const config = await prisma.warmupConfig.findUnique({
+    where: { id: "singleton" },
+  });
+  const minDelay = config?.minDelayBetweenSendsMs ?? 180000;
+
+  // Fetch a small candidate set — never dump 50 at once
   const events = await prisma.warmupEvent.findMany({
     where: {
       status: "QUEUED",
@@ -62,17 +84,28 @@ async function processQueuedEvents(): Promise<void> {
       receiver: true,
     },
     orderBy: { scheduledFor: "asc" },
-    take: 50, // Process up to 50 per tick
+    take: 30,
   });
 
   if (events.length === 0) return;
 
-  logger.info(`Processing ${events.length} queued warmup events`);
+  logger.info(`Evaluating ${events.length} queued warmup events (safety caps on)`);
+
+  let sentThisTick = 0;
+  const receiversHitThisTick = new Set<string>();
+  const sendersUsedThisTick = new Set<string>();
 
   for (const event of events) {
+    if (sentThisTick >= SAFETY.maxSendsPerTick) {
+      logger.info(
+        { sentThisTick, cap: SAFETY.maxSendsPerTick },
+        "Tick send cap reached — remaining stay queued"
+      );
+      break;
+    }
+
     const { sender, receiver } = event;
 
-    // Skip if sender account is not active
     if (sender.status !== "ACTIVE") {
       await prisma.warmupEvent.update({
         where: { id: event.id },
@@ -81,8 +114,6 @@ async function processQueuedEvents(): Promise<void> {
       continue;
     }
 
-    // Enforce pairing rule even for already-queued events:
-    // OLD accounts must only send to NEW accounts
     if (sender.role === "OLD" && receiver.role === "OLD") {
       await prisma.warmupEvent.update({
         where: { id: event.id },
@@ -95,7 +126,53 @@ async function processQueuedEvents(): Promise<void> {
       continue;
     }
 
-    // Enforce minimum delay: check last send from this account
+    // One send per sender per tick (prevents 3 OLD firing in the same minute)
+    if (sendersUsedThisTick.has(sender.id)) {
+      continue;
+    }
+
+    // One send per receiver per tick (no triple-hit on George every 5 min)
+    if (receiversHitThisTick.has(receiver.id)) {
+      continue;
+    }
+
+    // Receiver hourly / daily inbound caps
+    const inboundHour = await countInbound(receiver.id, hourAgo);
+    if (inboundHour >= SAFETY.maxInboundPerReceiverPerHour) {
+      logger.info(
+        {
+          receiver: receiver.email,
+          inboundHour,
+          cap: SAFETY.maxInboundPerReceiverPerHour,
+        },
+        "Receiver hourly inbound cap — leave queued"
+      );
+      continue;
+    }
+
+    const inboundDay = await countInbound(receiver.id, dayStart);
+    if (inboundDay >= SAFETY.maxInboundPerReceiverPerDay) {
+      // Over daily cap: cancel leftover queue TO this receiver for today
+      await prisma.warmupEvent.updateMany({
+        where: {
+          receiverId: receiver.id,
+          status: "QUEUED",
+          scheduledFor: { gte: dayStart },
+        },
+        data: { status: "FAILED" },
+      });
+      logger.warn(
+        {
+          receiver: receiver.email,
+          inboundDay,
+          cap: SAFETY.maxInboundPerReceiverPerDay,
+        },
+        "Receiver daily inbound cap hit — cancelled remaining queue to this inbox"
+      );
+      continue;
+    }
+
+    // Minimum delay between sends from same sender
     const lastSent = await prisma.warmupEvent.findFirst({
       where: {
         senderId: sender.id,
@@ -104,15 +181,25 @@ async function processQueuedEvents(): Promise<void> {
       },
       orderBy: { sentAt: "desc" },
     });
-
-    const config = await prisma.warmupConfig.findUnique({ where: { id: "singleton" } });
-    if (config && lastSent?.sentAt) {
+    if (lastSent?.sentAt) {
       const elapsed = now.getTime() - lastSent.sentAt.getTime();
-      if (elapsed < config.minDelayBetweenSendsMs) {
-        logger.debug(
-          { accountId: sender.id, elapsed },
-          "Skipping send: minimum delay not elapsed"
-        );
+      if (elapsed < minDelay) {
+        continue;
+      }
+    }
+
+    // Also enforce gap since last inbound to this receiver (spread arrivals)
+    const lastToReceiver = await prisma.warmupEvent.findFirst({
+      where: {
+        receiverId: receiver.id,
+        status: "SENT",
+        sentAt: { not: null },
+      },
+      orderBy: { sentAt: "desc" },
+    });
+    if (lastToReceiver?.sentAt) {
+      const sinceRecv = now.getTime() - lastToReceiver.sentAt.getTime();
+      if (sinceRecv < SAFETY.minGapBetweenInboundMs) {
         continue;
       }
     }
@@ -128,7 +215,6 @@ async function processQueuedEvents(): Promise<void> {
       );
 
       const messageId = `<warmup-${event.id}@warmup.local>`;
-
       const senderName = resolveDisplayName(sender.displayName, sender.email);
       const receiverName = resolveDisplayName(
         receiver.displayName,
@@ -152,7 +238,6 @@ async function processQueuedEvents(): Promise<void> {
         },
       });
 
-      // Keep stored content in sync with what was actually sent
       await prisma.warmupEvent.update({
         where: { id: event.id },
         data: {
@@ -169,6 +254,10 @@ async function processQueuedEvents(): Promise<void> {
         data: { sentToday: { increment: 1 } },
       });
 
+      sentThisTick++;
+      sendersUsedThisTick.add(sender.id);
+      receiversHitThisTick.add(receiver.id);
+
       logger.info(
         { eventId: event.id, from: sender.email, to: receiver.email },
         "Warmup email sent"
@@ -180,7 +269,6 @@ async function processQueuedEvents(): Promise<void> {
         "Failed to send warmup email"
       );
 
-      // Check if it's an auth/rate-limit error
       const isAuthError =
         error.message?.includes("535") ||
         error.message?.includes("InvalidCredentials") ||
@@ -191,7 +279,6 @@ async function processQueuedEvents(): Promise<void> {
         error.message?.includes("Rate limit");
 
       if (isAuthError || isRateLimitError) {
-        // Set account to ERROR, require manual re-activation
         await prisma.account.update({
           where: { id: sender.id },
           data: {
@@ -200,7 +287,6 @@ async function processQueuedEvents(): Promise<void> {
             lastError: error.message,
           },
         });
-        // Remove transporter from pool
         transporterPool.delete(sender.id);
         logger.warn(
           { accountId: sender.id, email: sender.email },

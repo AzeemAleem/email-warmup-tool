@@ -1,11 +1,16 @@
 /**
  * Personalize email subject/body with real sender & receiver names.
  * Templates may use {{senderName}} / {{receiverName}} placeholders,
- * or generic AI sign-offs (Alex, etc.) which get rewritten at send time.
+ * or generic AI names (Alex, Mike, etc.) which get rewritten at send time.
  */
 
-const FAKE_SIGN_OFF_NAMES = [
+const FAKE_NAMES = [
   "Alex",
+  "Mike",
+  "John",
+  "Sarah",
+  "David",
+  "James",
   "Jordan",
   "Sam",
   "Taylor",
@@ -19,6 +24,11 @@ const FAKE_SIGN_OFF_NAMES = [
   "Pat",
   "Dana",
   "Robin",
+  "Steve",
+  "Bob",
+  "Tom",
+  "Anna",
+  "Emma",
 ];
 
 /** Prefer display name; else local-part of email before @ */
@@ -29,7 +39,6 @@ export function resolveDisplayName(
   const trimmed = displayName?.trim();
   if (trimmed) return trimmed;
   const local = email.split("@")[0] || email;
-  // george.pacifypackaging → George
   const first = local.split(/[._+\-]/)[0] || local;
   return first.charAt(0).toUpperCase() + first.slice(1);
 }
@@ -57,16 +66,22 @@ export function personalizeEmailContent(
     .replace(/\{\{\s*senderName\s*\}\}/gi, sender)
     .replace(/\{\{\s*receiverName\s*\}\}/gi, receiverFirst || "there");
 
-  // Fix generic greetings when we know the receiver
   if (receiverFirst) {
-    personalizedBody = personalizedBody
-      .replace(/^(Hi|Hey|Hello)(\s+there)?([,!]?\s*)/i, `$1 ${receiverFirst}$3`)
-      .replace(/^(Hi|Hey|Hello)\s+\{\{[^}]+\}\}([,!]?\s*)/i, `$1 ${receiverFirst}$2`);
+    // Hi Alex, / Hey Mike, / Hello there, → Hi George,
+    personalizedBody = personalizedBody.replace(
+      /^(Hi|Hey|Hello)\s+(?:there|\w+)([,!]?\s*)/im,
+      `$1 ${receiverFirst}$2`
+    );
+    // Hi, → Hi George,
+    personalizedBody = personalizedBody.replace(
+      /^(Hi|Hey|Hello)([,!]\s*)/im,
+      `$1 ${receiverFirst}$2`
+    );
   }
 
-  // Replace trailing fake sign-off names (Best,\nAlex → Best,\nGeorge)
+  // Replace trailing fake sign-off names
   const fakeNamePattern = new RegExp(
-    `(\\n|^)(${FAKE_SIGN_OFF_NAMES.join("|")})\\s*$`,
+    `(\\n|^)(${FAKE_NAMES.join("|")})\\s*$`,
     "i"
   );
   if (fakeNamePattern.test(personalizedBody)) {
@@ -76,12 +91,10 @@ export function personalizeEmailContent(
       personalizedBody.trim()
     )
   ) {
-    // Sign-off with no name — append sender name
     personalizedBody = `${personalizedBody.trim()}\n${sender}`;
   } else if (
     !new RegExp(`${escapeRegex(sender)}\\s*$`, "i").test(personalizedBody.trim())
   ) {
-    // No recognizable sign-off — add a simple one
     personalizedBody = `${personalizedBody.trim()}\n\nBest,\n${sender}`;
   }
 
