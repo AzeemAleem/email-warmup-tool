@@ -87,24 +87,20 @@ dailyTarget    = min(volume, maxVolumePerDay)     # never exceed the cap
 
 ## 6. Who sends to whom (recipient selection)
 
-For every send slot from account **A**, a recipient is chosen by **weighted random**:
+Pairing is role-aware:
+
+| Sender role | Allowed recipients |
+|-------------|-------------------|
+| **OLD** | **NEW only** — never OLD → OLD |
+| **NEW** | Prefer **OLD** (natural outbound to trusted inboxes); other NEW only if no OLD is available |
+
+Among allowed candidates, exclude any pair A→B that exchanged mail in the last 6h (cooldown), then pick by weighted random:
 
 ```
-candidates = all other ACTIVE accounts
-             minus any pair A→B that exchanged mail in the last 6h (cooldown)
-
-weight(B)  = (1 - trustWeight(B)) * 0.7 + 0.3
+weight(B) = (1 - trustWeight(B)) * 0.7 + 0.3
 ```
 
-This means **low-trust (new) accounts get more inbound mail**, because inbound mail from trusted senders is the single fastest reputation builder.
-
-| Receiver | trustWeight | selection weight | relative pull |
-|----------|-------------|------------------|---------------|
-| OLD account | 1.00 | 0.30 | 1× (least) |
-| NEW day 14 | 0.50 | 0.65 | ~2× |
-| NEW day 1 | 0.04 | 0.97 | ~3× (most) |
-
-New accounts are ~3× more likely to be picked as recipients than old ones.
+So among NEW receivers, lower-trust (newer) accounts still get slightly more inbound mail — the fastest reputation builder.
 
 ---
 

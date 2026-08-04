@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "worker": "ts-node --project tsconfig.worker.json src/worker/index.ts",
+    "worker": "node ./node_modules/ts-node/dist/bin.js --project tsconfig.worker.json src/worker/index.ts",
     "worker:dev": "ts-node-dev --project tsconfig.worker.json --respawn src/worker/index.ts",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",

@@ -6,18 +6,29 @@ export interface EmailContent {
   body: string;
 }
 
-const SYSTEM_PROMPT = `Generate a short, natural, plausible business/personal email. It should read like a real
-1-2 person email exchange - varied subject lines, varied greetings, varied sign-offs.
+const SYSTEM_PROMPT = `Generate a short, natural, plausible business/personal email.
+It should read like a real 1-2 person email exchange - varied subject lines, greetings, and sign-offs.
 Avoid spam trigger words (free, guarantee, click here, act now, limited time, winner).
-Keep it under 120 words. Vary tone across calls: some casual, some professional, some
-brief one-liners, some slightly longer. Do not use the same template structure twice.
-Return JSON: {"subject": "...", "body": "..."}`;
+Keep it under 120 words. Vary tone: some casual, some professional, some brief, some slightly longer.
+Do NOT invent a person's real name. Use these exact placeholders:
+- Greeting: use {{receiverName}} (e.g. "Hi {{receiverName}},")
+- Sign-off name on its own last line: {{senderName}}
+Example ending:
+Best,
+{{senderName}}
 
-const REPLY_PROMPT_TEMPLATE = (originalSubject: string, originalBody: string) => `
+Return JSON only: {"subject": "...", "body": "..."}`;
+
+const REPLY_PROMPT_TEMPLATE = (
+  originalSubject: string,
+  originalBody: string,
+  replyerName: string
+) => `
 Generate a short, natural reply to the following email thread.
-The reply should sound like a real human responding - acknowledge something from the original,
-be brief (under 80 words), and vary in tone.
+Acknowledge something from the original, keep under 80 words, vary tone.
 Avoid spam trigger words.
+Sign off as {{senderName}} (placeholder). Do not invent another name.
+The replier's display name will be substituted for {{senderName}} (currently: ${replyerName}).
 Return JSON: {"subject": "Re: ${originalSubject}", "body": "..."}
 
 Original email:
@@ -80,7 +91,6 @@ export async function generateEmailContent(
     }
   } catch (err: unknown) {
     const error = err as Error;
-    // If Gemini quota hit, fall back to Groq
     if (
       provider === "gemini" &&
       (error.message?.includes("quota") ||
@@ -104,14 +114,19 @@ export async function generateEmailContent(
 export async function generateReplyContent(
   originalSubject: string,
   originalBody: string,
-  provider: string = "gemini"
+  provider: string = "gemini",
+  replyerName: string = "{{senderName}}"
 ): Promise<EmailContent> {
-  const prompt = REPLY_PROMPT_TEMPLATE(originalSubject, originalBody);
+  const prompt = REPLY_PROMPT_TEMPLATE(
+    originalSubject,
+    originalBody,
+    replyerName
+  );
 
   if (provider === "none") {
     return {
       subject: `Re: ${originalSubject}`,
-      body: "Got it, thanks for the update!",
+      body: `Got it, thanks for the update!\n\nBest,\n{{senderName}}`,
     };
   }
 
@@ -124,38 +139,38 @@ export async function generateReplyContent(
   } catch {
     return {
       subject: `Re: ${originalSubject}`,
-      body: "Thanks for reaching out. I'll get back to you shortly.",
+      body: `Thanks for reaching out. I'll get back to you shortly.\n\nBest,\n{{senderName}}`,
     };
   }
 
   return {
     subject: `Re: ${originalSubject}`,
-    body: "Thanks for the email, noted.",
+    body: `Thanks for the email, noted.\n\nBest,\n{{senderName}}`,
   };
 }
 
-/** Static fallback pool when AI is unavailable */
+/** Static fallback pool when AI is unavailable — placeholders filled at send time */
 function getFallbackContent(): EmailContent {
   const templates: EmailContent[] = [
     {
       subject: "Quick update",
-      body: "Hi,\n\nJust wanted to share a quick update on the project. Everything is on track for the deadline.\n\nBest,\nAlex",
+      body: "Hi {{receiverName}},\n\nJust wanted to share a quick update on the project. Everything is on track for the deadline.\n\nBest,\n{{senderName}}",
     },
     {
       subject: "Following up",
-      body: "Hey,\n\nJust following up on our last conversation. Let me know when you have a minute to chat.\n\nThanks",
+      body: "Hey {{receiverName}},\n\nJust following up on our last conversation. Let me know when you have a minute to chat.\n\nThanks,\n{{senderName}}",
     },
     {
       subject: "Meeting notes",
-      body: "Hi there,\n\nHere are the key takeaways from today's meeting. Please review and let me know if I missed anything.\n\nRegards",
+      body: "Hi {{receiverName}},\n\nHere are the key takeaways from today's meeting. Please review and let me know if I missed anything.\n\nRegards,\n{{senderName}}",
     },
     {
       subject: "Checking in",
-      body: "Hope you're doing well! Just checking in to see how things are progressing on your end.\n\nBest wishes",
+      body: "Hi {{receiverName}},\n\nHope you're doing well! Just checking in to see how things are progressing on your end.\n\nBest wishes,\n{{senderName}}",
     },
     {
       subject: "Resource sharing",
-      body: "Thought this might be useful for what we discussed. Let me know your thoughts when you get a chance.\n\nCheers",
+      body: "Hi {{receiverName}},\n\nThought this might be useful for what we discussed. Let me know your thoughts when you get a chance.\n\nCheers,\n{{senderName}}",
     },
   ];
 
@@ -172,7 +187,6 @@ export async function generateTemplateBatch(
     try {
       const content = await generateEmailContent(provider);
       results.push(content);
-      // Small delay to avoid hitting rate limits
       await new Promise((r) => setTimeout(r, 500));
     } catch {
       results.push(getFallbackContent());

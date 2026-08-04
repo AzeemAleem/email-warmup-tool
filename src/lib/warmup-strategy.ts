@@ -100,25 +100,48 @@ export function weightedRandom<T>(
 }
 
 /**
- * Select a recipient for a given sender using weighted round-robin.
- * Biases towards low-trust accounts receiving more mail.
- * Excludes sender itself and any pair in cooldown.
+ * Select a recipient for a given sender.
+ *
+ * Pairing rules (warmup intent):
+ * - OLD senders → only NEW accounts (trusted mail builds new reputation)
+ * - NEW senders → prefer OLD accounts (natural outbound to trusted inboxes);
+ *   other NEW allowed as light fallback if no OLD available
+ *
+ * Also applies trust-weight bias among allowed candidates and pair cooldown.
  */
 export function selectRecipient(
   senderId: string,
   activeAccounts: AccountInput[],
   trustWeights: Record<string, number>,
   recentPairs: Set<string>, // "senderId:receiverId" pairs within cooldown
-  rng: RngFn = Math.random
+  rng: RngFn = Math.random,
+  senderRole?: string
 ): AccountInput | null {
-  const candidates = activeAccounts.filter(
+  const sender =
+    senderRole !== undefined
+      ? { role: senderRole }
+      : activeAccounts.find((a) => a.id === senderId);
+
+  let candidates = activeAccounts.filter(
     (a) => a.id !== senderId && !recentPairs.has(`${senderId}:${a.id}`)
   );
+
+  if (sender?.role === "OLD") {
+    // Old accounts must warm new ones — never OLD → OLD
+    candidates = candidates.filter((a) => a.role === "NEW");
+  } else if (sender?.role === "NEW") {
+    const oldCandidates = candidates.filter((a) => a.role === "OLD");
+    if (oldCandidates.length > 0) {
+      candidates = oldCandidates;
+    }
+    // else: no OLD available / all in cooldown — fall back to other NEW
+  }
 
   if (candidates.length === 0) return null;
 
   const weights = candidates.map((c) => {
     const tw = trustWeights[c.id] ?? 0;
+    // Among NEW recipients, lower trust still gets slightly more inbound
     return (1 - tw) * 0.7 + 0.3;
   });
 
@@ -216,7 +239,8 @@ export function buildDailyPlan(
         activeAccounts,
         trustWeights,
         recentPairs,
-        rng
+        rng,
+        sender.role
       );
 
       if (!recipient) continue;

@@ -5,6 +5,7 @@
 import { PrismaClient } from "@prisma/client";
 import { buildDailyPlan, computeTrustWeight, computeDailyTargetVolume } from "../lib/warmup-strategy";
 import { generateTemplateBatch } from "../lib/ai-content";
+import { personalizeEmailContent, resolveDisplayName } from "../lib/personalize";
 import logger from "./logger";
 
 const prisma = new PrismaClient();
@@ -132,16 +133,33 @@ export async function runDailyPlanner(): Promise<void> {
 
     logger.info(`Daily plan: ${plan.slots.length} send slots across ${accounts.length} accounts`);
 
-    // Write WarmupEvent rows for each slot
+    // Write WarmupEvent rows for each slot (personalized with real names)
+    const accountById = new Map(accounts.map((a) => [a.id, a]));
     let templateIdx = 0;
     const eventsToCreate = plan.slots.map((slot) => {
       const template = templates[templateIdx % templates.length];
       templateIdx++;
+      const sender = accountById.get(slot.senderId);
+      const receiver = accountById.get(slot.receiverId);
+      const senderName = resolveDisplayName(
+        sender?.displayName,
+        sender?.email || "Sender"
+      );
+      const receiverName = resolveDisplayName(
+        receiver?.displayName,
+        receiver?.email || "there"
+      );
+      const personalized = personalizeEmailContent(
+        template.subject,
+        template.body,
+        senderName,
+        receiverName
+      );
       return {
         senderId: slot.senderId,
         receiverId: slot.receiverId,
-        subject: template.subject,
-        bodyPreview: template.body.slice(0, 200),
+        subject: personalized.subject,
+        bodyPreview: personalized.body,
         status: "QUEUED",
         scheduledFor: slot.scheduledFor,
       };

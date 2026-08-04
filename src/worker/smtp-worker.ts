@@ -6,6 +6,7 @@ import { Queue, Worker, Job } from "bullmq";
 import nodemailer from "nodemailer";
 import { PrismaClient } from "@prisma/client";
 import { decrypt } from "../lib/crypto";
+import { personalizeEmailContent, resolveDisplayName } from "../lib/personalize";
 import { getRedis } from "./redis";
 import logger from "./logger";
 
@@ -80,6 +81,20 @@ async function processQueuedEvents(): Promise<void> {
       continue;
     }
 
+    // Enforce pairing rule even for already-queued events:
+    // OLD accounts must only send to NEW accounts
+    if (sender.role === "OLD" && receiver.role === "OLD") {
+      await prisma.warmupEvent.update({
+        where: { id: event.id },
+        data: { status: "FAILED" },
+      });
+      logger.info(
+        { eventId: event.id, from: sender.email, to: receiver.email },
+        "Skipped OLD→OLD send (pairing rule)"
+      );
+      continue;
+    }
+
     // Enforce minimum delay: check last send from this account
     const lastSent = await prisma.warmupEvent.findFirst({
       where: {
@@ -114,23 +129,38 @@ async function processQueuedEvents(): Promise<void> {
 
       const messageId = `<warmup-${event.id}@warmup.local>`;
 
+      const senderName = resolveDisplayName(sender.displayName, sender.email);
+      const receiverName = resolveDisplayName(
+        receiver.displayName,
+        receiver.email
+      );
+      const personalized = personalizeEmailContent(
+        event.subject,
+        event.bodyPreview,
+        senderName,
+        receiverName
+      );
+
       await transporter.sendMail({
-        from: `"${sender.displayName || sender.email}" <${sender.email}>`,
+        from: `"${senderName}" <${sender.email}>`,
         to: receiver.email,
-        subject: event.subject,
-        text: event.bodyPreview,
+        subject: personalized.subject,
+        text: personalized.body,
         messageId,
         headers: {
           "X-Warmup-Event": event.id,
         },
       });
 
+      // Keep stored content in sync with what was actually sent
       await prisma.warmupEvent.update({
         where: { id: event.id },
         data: {
           status: "SENT",
           sentAt: new Date(),
           messageId,
+          subject: personalized.subject,
+          bodyPreview: personalized.body,
         },
       });
 

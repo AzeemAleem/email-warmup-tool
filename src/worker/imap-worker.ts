@@ -8,6 +8,7 @@ import { ImapFlow, FetchMessageObject } from "imapflow";
 import { PrismaClient, Account } from "@prisma/client";
 import { decrypt } from "../lib/crypto";
 import { generateReplyContent } from "../lib/ai-content";
+import { personalizeEmailContent, resolveDisplayName } from "../lib/personalize";
 import { getRedis } from "./redis";
 import logger from "./logger";
 import nodemailer from "nodemailer";
@@ -140,10 +141,27 @@ async function sendReply(
   aiProvider: string
 ): Promise<void> {
   try {
+    const replyerName = resolveDisplayName(
+      replierAccount.displayName,
+      replierAccount.email
+    );
+    const originalSenderName = resolveDisplayName(
+      originalEvent.sender.displayName,
+      originalEvent.sender.email
+    );
+
     const replyContent = await generateReplyContent(
       originalEvent.subject,
       originalEvent.bodyPreview,
-      aiProvider
+      aiProvider,
+      replyerName
+    );
+
+    const personalized = personalizeEmailContent(
+      replyContent.subject,
+      replyContent.body,
+      replyerName,
+      originalSenderName
     );
 
     const appPassword = decrypt(replierAccount.appPassword);
@@ -160,10 +178,10 @@ async function sendReply(
     const messageId = `<reply-${originalEvent.id}-${Date.now()}@warmup.local>`;
 
     await transporter.sendMail({
-      from: `"${replierAccount.displayName || replierAccount.email}" <${replierAccount.email}>`,
+      from: `"${replyerName}" <${replierAccount.email}>`,
       to: originalEvent.sender.email,
-      subject: replyContent.subject,
-      text: replyContent.body,
+      subject: personalized.subject,
+      text: personalized.body,
       messageId,
       inReplyTo: originalEvent.messageId || undefined,
       references: originalEvent.messageId || undefined,
@@ -174,13 +192,12 @@ async function sendReply(
       data: { status: "REPLIED", repliedAt: new Date() },
     });
 
-    // Create a new event record for the reply
     await prisma.warmupEvent.create({
       data: {
         senderId: replierAccount.id,
         receiverId: originalEvent.sender.id,
-        subject: replyContent.subject,
-        bodyPreview: replyContent.body.slice(0, 200),
+        subject: personalized.subject,
+        bodyPreview: personalized.body,
         messageId,
         status: "SENT",
         scheduledFor: new Date(),
