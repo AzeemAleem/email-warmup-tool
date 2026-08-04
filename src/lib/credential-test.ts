@@ -1,6 +1,3 @@
-import nodemailer from "nodemailer";
-import { ImapFlow } from "imapflow";
-
 export interface CredentialTestResult {
   smtp: { ok: boolean; error?: string };
   imap: { ok: boolean; error?: string };
@@ -14,6 +11,7 @@ export async function testSmtpCredentials(
   smtpPort: number
 ): Promise<{ ok: boolean; error?: string }> {
   try {
+    const nodemailer = (await import("nodemailer")).default;
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
@@ -42,6 +40,7 @@ export async function testImapCredentials(
   imapHost: string,
   imapPort: number
 ): Promise<{ ok: boolean; error?: string }> {
+  const { ImapFlow } = await import("imapflow");
   const client = new ImapFlow({
     host: imapHost,
     port: imapPort,
@@ -62,7 +61,9 @@ export async function testImapCredentials(
     const error = err as Error;
     try {
       client.close();
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     return { ok: false, error: error.message || "IMAP connection failed" };
   }
 }

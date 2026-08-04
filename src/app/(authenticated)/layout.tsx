@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { Sidebar } from "@/components/ui/Sidebar";
 
+export const dynamic = "force-dynamic";
+
 export default async function AuthenticatedLayout({
   children,
 }: {

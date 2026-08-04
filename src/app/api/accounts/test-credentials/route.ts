@@ -1,7 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/session";
 import { testCredentials } from "@/lib/credential-test";
 import { z } from "zod";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const TestSchema = z.object({
   email: z.string().email(),

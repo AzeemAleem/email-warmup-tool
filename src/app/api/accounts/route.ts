@@ -1,8 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { encrypt } from "@/lib/crypto";
 import { requireAuth } from "@/lib/session";
 import { z } from "zod";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const CreateAccountSchema = z.object({
   email: z.string().email(),

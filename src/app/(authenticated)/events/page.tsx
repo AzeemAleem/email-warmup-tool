@@ -1,16 +1,18 @@
 import { prisma } from "@/lib/db";
 import { EventsTable } from "./EventsTable";
 
+export const dynamic = "force-dynamic";
+
 interface EventsPageProps {
-  searchParams: Promise<{
+  searchParams: {
     status?: string;
     search?: string;
     page?: string;
-  }>;
+  };
 }
 
 export default async function EventsPage({ searchParams }: EventsPageProps) {
-  const params = await searchParams;
+  const params = searchParams;
   const page = parseInt(params.page || "1");
   const pageSize = 50;
   const skip = (page - 1) * pageSize;

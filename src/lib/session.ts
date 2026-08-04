@@ -1,4 +1,4 @@
-import { getIronSession, IronSession, SessionOptions } from "iron-session";
+import { IronSession, SessionOptions, getIronSession } from "iron-session";
 import { cookies } from "next/headers";
 
 export interface SessionData {
@@ -7,20 +7,26 @@ export interface SessionData {
   isLoggedIn: boolean;
 }
 
+function getSessionPassword(): string {
+  const secret = process.env.SESSION_SECRET;
+  if (secret && secret.length >= 32) return secret;
+  // Build-safe fallback (override in production via env)
+  return "fallback-secret-change-in-production-min-32-chars!!";
+}
+
 export const sessionOptions: SessionOptions = {
-  password: process.env.SESSION_SECRET || "fallback-secret-change-in-production-32chars",
+  password: getSessionPassword(),
   cookieName: "warmup-session",
   cookieOptions: {
     secure: process.env.NODE_ENV === "production",
     httpOnly: true,
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: 60 * 60 * 24 * 7,
   },
 };
 
 export async function getSession(): Promise<IronSession<SessionData>> {
-  const session = await getIronSession<SessionData>(await cookies(), sessionOptions);
-  return session;
+  return getIronSession<SessionData>(await cookies(), sessionOptions);
 }
 
 export async function requireAuth(): Promise<SessionData> {

@@ -1,7 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/session";
 import { z } from "zod";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const ConfigSchema = z.object({
   rampUpDays: z.number().int().min(7).max(90),
