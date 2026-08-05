@@ -122,6 +122,8 @@ export async function runDailyPlanner(): Promise<void> {
       activeHourStart: config.activeHourStart,
       activeHourEnd: config.activeHourEnd,
       minPairCooldownHours: config.minPairCooldownHours,
+      maxInboundPerReceiverPerDay: config.maxInboundPerReceiverPerDay,
+      maxOldDailySendsWhenFewNew: config.maxOldDailySendsWhenFewNew,
     };
 
     const plan = buildDailyPlan(

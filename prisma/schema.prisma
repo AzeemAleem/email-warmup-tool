@@ -58,18 +58,27 @@ model WarmupEvent {
 
 model WarmupConfig {
   id                     String  @id @default("singleton")
-  rampUpDays             Int     @default(28)   // days to reach full volume
-  startVolumePerDay      Int     @default(2)
-  maxVolumePerDay        Int     @default(40)
-  minDelayBetweenSendsMs Int     @default(180000)  // 3 min
+  rampUpDays             Int     @default(28)
+  startVolumePerDay      Int     @default(1)
+  maxVolumePerDay        Int     @default(10)
+  minDelayBetweenSendsMs Int     @default(180000)  // 3 min — same sender
   maxDelayBetweenSendsMs Int     @default(900000)  // 15 min
   replyProbability       Float   @default(0.35)
   spamRescueEnabled      Boolean @default(true)
-  activeHourStart        Int     @default(8)   // 8am
-  activeHourEnd          Int     @default(20)  // 8pm
+  activeHourStart        Int     @default(8)
+  activeHourEnd          Int     @default(20)
   minPairCooldownHours   Int     @default(6)
   aiProvider             String  @default("gemini") // gemini | groq | none
   timezone               String  @default("UTC")
+
+  // Deliverability safety (used by worker — same values as Config UI)
+  maxInboundPerReceiverPerDay   Int @default(3)
+  maxInboundPerReceiverPerHour  Int @default(1)
+  minGapBetweenInboundMs        Int @default(7200000) // 2 hours
+  maxSendsPerTick               Int @default(1)
+  maxSendsToSameReceiverPerTick Int @default(1)
+  maxOldDailySendsWhenFewNew    Int @default(3)
+
   updatedAt              DateTime @updatedAt
 }
 

@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 const ConfigSchema = z.object({
   rampUpDays: z.number().int().min(7).max(90),
   startVolumePerDay: z.number().int().min(1).max(10),
-  maxVolumePerDay: z.number().int().min(5).max(50),
+  maxVolumePerDay: z.number().int().min(1).max(50),
   minDelayBetweenSendsMs: z.number().int().min(60000),
   maxDelayBetweenSendsMs: z.number().int().min(120000),
   replyProbability: z.number().min(0).max(1),
@@ -19,6 +19,12 @@ const ConfigSchema = z.object({
   minPairCooldownHours: z.number().int().min(1).max(48),
   aiProvider: z.enum(["gemini", "groq", "none"]),
   timezone: z.string().default("UTC"),
+  maxInboundPerReceiverPerDay: z.number().int().min(1).max(20),
+  maxInboundPerReceiverPerHour: z.number().int().min(1).max(10),
+  minGapBetweenInboundMs: z.number().int().min(600000), // min 10 min
+  maxSendsPerTick: z.number().int().min(1).max(10),
+  maxSendsToSameReceiverPerTick: z.number().int().min(1).max(5),
+  maxOldDailySendsWhenFewNew: z.number().int().min(1).max(20),
 });
 
 export async function GET() {
@@ -60,6 +66,7 @@ export async function PUT(req: NextRequest) {
     if (error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    console.error("PUT /api/config", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

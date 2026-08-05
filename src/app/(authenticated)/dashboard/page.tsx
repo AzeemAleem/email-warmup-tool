@@ -1,8 +1,11 @@
 import { prisma } from "@/lib/db";
-import { StatCard } from "@/components/ui/Card";
+import { StatCard, Card } from "@/components/ui/Card";
 import { WarmupChart } from "./WarmupChart";
 import { PoolHealth } from "./PoolHealth";
 import { subDays, startOfDay, endOfDay } from "date-fns";
+import { formatGapHours, resolveSafetyLimits } from "@/lib/safety";
+
+export const dynamic = "force-dynamic";
 
 async function getDashboardData() {
   const now = new Date();
@@ -32,7 +35,6 @@ async function getDashboardData() {
       },
       _count: true,
     }),
-    // Last 14 days chart data
     prisma.warmupEvent.findMany({
       where: { scheduledFor: { gte: fourteenDaysAgo } },
       select: { scheduledFor: true, status: true },
@@ -60,22 +62,75 @@ async function getDashboardData() {
 
 export default async function DashboardPage() {
   const data = await getDashboardData();
+  const safety = resolveSafetyLimits(data.config);
 
   const todaySent = data.todayStats.find((s) => s.status === "SENT")?._count || 0;
   const todayOpened = data.todayStats.find((s) => s.status === "OPENED")?._count || 0;
   const todayReplied = data.todayStats.find((s) => s.status === "REPLIED")?._count || 0;
-  const todayRescued = data.todayStats.find((s) => s.status === "RESCUED_FROM_SPAM")?._count || 0;
+  const todayRescued =
+    data.todayStats.find((s) => s.status === "RESCUED_FROM_SPAM")?._count || 0;
+
+  const oldPerDayCap =
+    data.newAccounts > 0 && data.oldAccounts > 0
+      ? Math.min(
+          safety.maxOldDailySendsWhenFewNew,
+          Math.floor(
+            (data.newAccounts * safety.maxInboundPerReceiverPerDay) /
+              data.oldAccounts
+          )
+        )
+      : 0;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-white">Dashboard</h1>
         <p className="text-sm text-gray-400 mt-1">
-          Pool health overview and warmup activity
+          Pool health and live deliverability limits (from Config)
         </p>
       </div>
 
-      {/* Pool health cards */}
+      <Card className="border-amber-500/20 bg-amber-500/5">
+        <h2 className="text-sm font-semibold text-amber-200 mb-3">
+          Live safety limits
+        </h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+          <div>
+            <p className="text-xs text-gray-500">Max inbound / inbox / day</p>
+            <p className="text-lg font-semibold text-white">
+              {safety.maxInboundPerReceiverPerDay}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Max inbound / hour</p>
+            <p className="text-lg font-semibold text-white">
+              {safety.maxInboundPerReceiverPerHour}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Min gap same inbox</p>
+            <p className="text-lg font-semibold text-white">
+              {formatGapHours(safety.minGapBetweenInboundMs)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Sends / 5-min tick</p>
+            <p className="text-lg font-semibold text-white">
+              {safety.maxSendsPerTick}
+              <span className="text-xs text-gray-500 font-normal">
+                {" "}
+                (same recv ≤{safety.maxSendsToSameReceiverPerTick})
+              </span>
+            </p>
+          </div>
+        </div>
+        <p className="text-xs text-gray-500 mt-3">
+          With {data.oldAccounts} OLD + {data.newAccounts} NEW → each OLD ≈{" "}
+          <span className="text-gray-300">{oldPerDayCap}</span> send(s)/day to
+          the NEW pool. Edit on the Config page.
+        </p>
+      </Card>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total Accounts"
@@ -92,7 +147,7 @@ export default async function DashboardPage() {
         <StatCard
           label="Today's Plan"
           value={data.todayVolumePlan}
-          sub="total sends planned"
+          sub="sum of account daily targets"
           color="blue"
         />
         <StatCard
@@ -103,18 +158,12 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Second row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Opened"
-          value={todayOpened}
-          sub="today"
-          color="blue"
-        />
+        <StatCard label="Opened" value={todayOpened} sub="today" color="blue" />
         <StatCard
           label="Replied"
           value={todayReplied}
-          sub="today"
+          sub="same-thread replies"
           color="green"
         />
         <StatCard
@@ -131,10 +180,7 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Chart */}
       <WarmupChart events={data.chartData} />
-
-      {/* Pool health table */}
       <PoolHealth />
     </div>
   );

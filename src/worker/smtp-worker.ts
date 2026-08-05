@@ -7,7 +7,7 @@ import nodemailer from "nodemailer";
 import { PrismaClient } from "@prisma/client";
 import { decrypt } from "../lib/crypto";
 import { personalizeEmailContent, resolveDisplayName } from "../lib/personalize";
-import { SAFETY } from "../lib/safety";
+import { resolveSafetyLimits } from "../lib/safety";
 import { getRedis } from "./redis";
 import logger from "./logger";
 
@@ -71,6 +71,7 @@ async function processQueuedEvents(): Promise<void> {
   const config = await prisma.warmupConfig.findUnique({
     where: { id: "singleton" },
   });
+  const safety = resolveSafetyLimits(config);
   const minDelay = config?.minDelayBetweenSendsMs ?? 180000;
 
   // Fetch a small candidate set — never dump 50 at once
@@ -92,13 +93,13 @@ async function processQueuedEvents(): Promise<void> {
   logger.info(`Evaluating ${events.length} queued warmup events (safety caps on)`);
 
   let sentThisTick = 0;
-  const receiversHitThisTick = new Set<string>();
+  const receiverCountsThisTick = new Map<string, number>();
   const sendersUsedThisTick = new Set<string>();
 
   for (const event of events) {
-    if (sentThisTick >= SAFETY.maxSendsPerTick) {
+    if (sentThisTick >= safety.maxSendsPerTick) {
       logger.info(
-        { sentThisTick, cap: SAFETY.maxSendsPerTick },
+        { sentThisTick, cap: safety.maxSendsPerTick },
         "Tick send cap reached — remaining stay queued"
       );
       break;
@@ -126,24 +127,23 @@ async function processQueuedEvents(): Promise<void> {
       continue;
     }
 
-    // One send per sender per tick (prevents 3 OLD firing in the same minute)
     if (sendersUsedThisTick.has(sender.id)) {
       continue;
     }
 
-    // One send per receiver per tick (no triple-hit on George every 5 min)
-    if (receiversHitThisTick.has(receiver.id)) {
+    const recvCount = receiverCountsThisTick.get(receiver.id) || 0;
+    if (recvCount >= safety.maxSendsToSameReceiverPerTick) {
       continue;
     }
 
     // Receiver hourly / daily inbound caps
     const inboundHour = await countInbound(receiver.id, hourAgo);
-    if (inboundHour >= SAFETY.maxInboundPerReceiverPerHour) {
+    if (inboundHour >= safety.maxInboundPerReceiverPerHour) {
       logger.info(
         {
           receiver: receiver.email,
           inboundHour,
-          cap: SAFETY.maxInboundPerReceiverPerHour,
+          cap: safety.maxInboundPerReceiverPerHour,
         },
         "Receiver hourly inbound cap — leave queued"
       );
@@ -151,7 +151,7 @@ async function processQueuedEvents(): Promise<void> {
     }
 
     const inboundDay = await countInbound(receiver.id, dayStart);
-    if (inboundDay >= SAFETY.maxInboundPerReceiverPerDay) {
+    if (inboundDay >= safety.maxInboundPerReceiverPerDay) {
       // Over daily cap: cancel leftover queue TO this receiver for today
       await prisma.warmupEvent.updateMany({
         where: {
@@ -165,7 +165,7 @@ async function processQueuedEvents(): Promise<void> {
         {
           receiver: receiver.email,
           inboundDay,
-          cap: SAFETY.maxInboundPerReceiverPerDay,
+          cap: safety.maxInboundPerReceiverPerDay,
         },
         "Receiver daily inbound cap hit — cancelled remaining queue to this inbox"
       );
@@ -199,7 +199,7 @@ async function processQueuedEvents(): Promise<void> {
     });
     if (lastToReceiver?.sentAt) {
       const sinceRecv = now.getTime() - lastToReceiver.sentAt.getTime();
-      if (sinceRecv < SAFETY.minGapBetweenInboundMs) {
+      if (sinceRecv < safety.minGapBetweenInboundMs) {
         continue;
       }
     }
@@ -256,7 +256,10 @@ async function processQueuedEvents(): Promise<void> {
 
       sentThisTick++;
       sendersUsedThisTick.add(sender.id);
-      receiversHitThisTick.add(receiver.id);
+      receiverCountsThisTick.set(
+        receiver.id,
+        (receiverCountsThisTick.get(receiver.id) || 0) + 1
+      );
 
       logger.info(
         { eventId: event.id, from: sender.email, to: receiver.email },

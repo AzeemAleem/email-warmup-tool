@@ -1,4 +1,4 @@
-import { SAFETY, capOldVolumeForNewPool } from "./safety";
+import { capOldVolumeForNewPool, resolveSafetyLimits } from "./safety";
 
 /**
  * Pure, side-effect-free warmup strategy module.
@@ -25,6 +25,8 @@ export interface ConfigInput {
   activeHourStart: number;
   activeHourEnd: number;
   minPairCooldownHours: number;
+  maxInboundPerReceiverPerDay?: number;
+  maxOldDailySendsWhenFewNew?: number;
 }
 
 export interface SendSlot {
@@ -217,6 +219,7 @@ export function buildDailyPlan(
   const newAccounts = activeAccounts.filter((a) => a.role === "NEW");
   const oldCount = oldAccounts.length;
   const newCount = newAccounts.length;
+  const safety = resolveSafetyLimits(config);
 
   // Compute volumes and generate timestamps
   const accountVolumes: Record<string, number> = {};
@@ -232,11 +235,14 @@ export function buildDailyPlan(
         targetVolume,
         oldCount,
         newCount,
-        SAFETY.maxInboundPerReceiverPerDay
+        safety.maxInboundPerReceiverPerDay,
+        safety.maxOldDailySendsWhenFewNew
       );
     } else if (sender.role === "NEW") {
-      // NEW outbound stays modest early on (already ramped by trustWeight)
-      targetVolume = Math.min(targetVolume, SAFETY.maxInboundPerReceiverPerDay);
+      targetVolume = Math.min(
+        targetVolume,
+        safety.maxInboundPerReceiverPerDay
+      );
     }
 
     accountVolumes[sender.id] = targetVolume;
