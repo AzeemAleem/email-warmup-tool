@@ -43,7 +43,11 @@ export async function runDailyPlanner(): Promise<void> {
         config.rampUpDays,
         new Date()
       );
-      const dailyTarget = computeDailyTargetVolume(tw, totalActive, config, true);
+      // NEW accounts do not initiate — only OLD get planned send volume
+      const dailyTarget =
+        account.role === "OLD"
+          ? computeDailyTargetVolume(tw, totalActive, config, true)
+          : 0;
 
       await prisma.account.update({
         where: { id: account.id },
@@ -55,7 +59,13 @@ export async function runDailyPlanner(): Promise<void> {
       });
 
       logger.info(
-        { accountId: account.id, email: account.email, tw, dailyTarget },
+        {
+          accountId: account.id,
+          email: account.email,
+          role: account.role,
+          tw,
+          dailyTarget,
+        },
         "Updated account trust weight and daily volume"
       );
     }
@@ -77,18 +87,29 @@ export async function runDailyPlanner(): Promise<void> {
       recentPairsMap[evt.senderId].add(`${evt.senderId}:${evt.receiverId}`);
     }
 
-    // Refresh template cache if running low
+    // Refresh packaging template cache (replace stale "Meeting notes" style templates)
     const templateCount = await prisma.contentTemplate.count();
-    if (templateCount < 20) {
-      logger.info("Refreshing content template cache (20 new templates)...");
-      const newTemplates = await generateTemplateBatch(20, config.aiProvider);
+    const staleMeeting = await prisma.contentTemplate.count({
+      where: {
+        OR: [
+          { subject: { contains: "Meeting", mode: "insensitive" } },
+          { subject: { contains: "Quick update", mode: "insensitive" } },
+          { body: { contains: "Alex", mode: "insensitive" } },
+        ],
+      },
+    });
+
+    if (templateCount < 40 || staleMeeting > 5) {
+      logger.info("Refreshing packaging content templates...");
+      await prisma.contentTemplate.deleteMany({});
+      const newTemplates = await generateTemplateBatch(60, config.aiProvider);
       await prisma.contentTemplate.createMany({
         data: newTemplates.map((t) => ({
           subject: t.subject,
           body: t.body,
         })),
       });
-      logger.info(`Added ${newTemplates.length} new content templates`);
+      logger.info(`Seeded ${newTemplates.length} packaging templates`);
     }
 
     // Get available templates

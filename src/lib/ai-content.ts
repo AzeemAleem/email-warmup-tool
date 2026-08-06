@@ -1,37 +1,31 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Groq from "groq-sdk";
+import {
+  getAllPackagingTemplates,
+  getRandomPackagingTemplate,
+  EmailContent,
+} from "./email-templates";
 
-export interface EmailContent {
-  subject: string;
-  body: string;
-}
+export type { EmailContent };
 
-const SYSTEM_PROMPT = `Generate a short, natural, plausible business/personal email.
-It should read like a real 1-2 person email exchange - varied subject lines, greetings, and sign-offs.
-Avoid spam trigger words (free, guarantee, click here, act now, limited time, winner).
-Keep it under 120 words. Vary tone: some casual, some professional, some brief, some slightly longer.
-Do NOT invent a person's real name. Use these exact placeholders:
-- Greeting: use {{receiverName}} (e.g. "Hi {{receiverName}},")
-- Sign-off name on its own last line: {{senderName}}
-Example ending:
-Best,
-{{senderName}}
-
+const SYSTEM_PROMPT = `Generate a short, natural B2B packaging / supply-chain email.
+Topics can include quotes, invoices, production status, reorders, materials, shipping,
+printing, samples, MOQ, certifications, or product-specific packaging questions.
+Avoid spam words (free, guarantee, click here, act now, limited time, winner).
+Keep under 80 words for the BODY ONLY — do NOT include greeting or signature.
+Do NOT invent real person names in the body.
 Return JSON only: {"subject": "...", "body": "..."}`;
 
 const REPLY_PROMPT_TEMPLATE = (
   originalSubject: string,
-  originalBody: string,
-  replyerName: string
+  originalBody: string
 ) => `
-Generate a short, natural reply to the following email thread.
-Acknowledge something from the original, keep under 80 words, vary tone.
-Avoid spam trigger words.
-Sign off as {{senderName}} (placeholder). Do not invent another name.
-The replier's display name will be substituted for {{senderName}} (currently: ${replyerName}).
+Write a short natural reply to this packaging-business email.
+Acknowledge something specific, keep under 60 words for BODY ONLY.
+No greeting or signature lines — those are added separately.
 Return JSON: {"subject": "Re: ${originalSubject}", "body": "..."}
 
-Original email:
+Original:
 Subject: ${originalSubject}
 Body: ${originalBody}
 `;
@@ -48,10 +42,8 @@ async function generateWithGemini(prompt: string): Promise<EmailContent> {
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
   const result = await model.generateContent(prompt);
-  const text = result.response.text();
-  return parseJsonResponse(text);
+  return parseJsonResponse(result.response.text());
 }
 
 async function generateWithGroq(prompt: string): Promise<EmailContent> {
@@ -61,12 +53,7 @@ async function generateWithGroq(prompt: string): Promise<EmailContent> {
   const groq = new Groq({ apiKey });
   const completion = await groq.chat.completions.create({
     model: "llama-3.3-70b-versatile",
-    messages: [
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
+    messages: [{ role: "user", content: prompt }],
     response_format: { type: "json_object" },
     max_tokens: 300,
   });
@@ -75,18 +62,20 @@ async function generateWithGroq(prompt: string): Promise<EmailContent> {
   return parseJsonResponse(text);
 }
 
-/** Generate email content using configured AI provider with fallback */
+/** Generate email content — packaging templates preferred; AI optional */
 export async function generateEmailContent(
   provider: string = "gemini"
 ): Promise<EmailContent> {
-  if (provider === "none") {
-    return getFallbackContent();
+  // Prefer curated packaging pool for consistency + variety
+  if (provider === "none" || Math.random() < 0.85) {
+    return getRandomPackagingTemplate();
   }
 
   try {
     if (provider === "gemini") {
       return await generateWithGemini(SYSTEM_PROMPT);
-    } else if (provider === "groq") {
+    }
+    if (provider === "groq") {
       return await generateWithGroq(SYSTEM_PROMPT);
     }
   } catch (err: unknown) {
@@ -97,100 +86,80 @@ export async function generateEmailContent(
         error.message?.includes("RESOURCE_EXHAUSTED") ||
         error.message?.includes("429"))
     ) {
-      console.warn("Gemini quota exceeded, falling back to Groq");
       try {
         return await generateWithGroq(SYSTEM_PROMPT);
       } catch {
-        return getFallbackContent();
+        return getRandomPackagingTemplate();
       }
     }
-    return getFallbackContent();
   }
 
-  return getFallbackContent();
+  return getRandomPackagingTemplate();
 }
 
-/** Generate a reply to an existing email */
 export async function generateReplyContent(
   originalSubject: string,
   originalBody: string,
   provider: string = "gemini",
-  replyerName: string = "{{senderName}}"
+  _replyerName: string = ""
 ): Promise<EmailContent> {
-  const prompt = REPLY_PROMPT_TEMPLATE(
-    originalSubject,
-    originalBody,
-    replyerName
-  );
+  const prompt = REPLY_PROMPT_TEMPLATE(originalSubject, originalBody);
+
+  const fallbacks: EmailContent[] = [
+    {
+      subject: `Re: ${originalSubject}`,
+      body: "Thanks for the note — I'll review this and get back to you shortly with an update.",
+    },
+    {
+      subject: `Re: ${originalSubject}`,
+      body: "Got it, thanks. I'll check on our side and follow up once I have a clear answer.",
+    },
+    {
+      subject: `Re: ${originalSubject}`,
+      body: "Appreciate you sending this over. Let me confirm the details and reply with next steps.",
+    },
+  ];
 
   if (provider === "none") {
-    return {
-      subject: `Re: ${originalSubject}`,
-      body: `Got it, thanks for the update!\n\nBest,\n{{senderName}}`,
-    };
+    return fallbacks[Math.floor(Math.random() * fallbacks.length)];
   }
 
   try {
     if (provider === "gemini") {
       return await generateWithGemini(prompt);
-    } else if (provider === "groq") {
+    }
+    if (provider === "groq") {
       return await generateWithGroq(prompt);
     }
   } catch {
-    return {
-      subject: `Re: ${originalSubject}`,
-      body: `Thanks for reaching out. I'll get back to you shortly.\n\nBest,\n{{senderName}}`,
-    };
+    /* fall through */
   }
 
-  return {
-    subject: `Re: ${originalSubject}`,
-    body: `Thanks for the email, noted.\n\nBest,\n{{senderName}}`,
-  };
+  return fallbacks[Math.floor(Math.random() * fallbacks.length)];
 }
 
-/** Static fallback pool when AI is unavailable — placeholders filled at send time */
-function getFallbackContent(): EmailContent {
-  const templates: EmailContent[] = [
-    {
-      subject: "Quick update",
-      body: "Hi {{receiverName}},\n\nJust wanted to share a quick update on the project. Everything is on track for the deadline.\n\nBest,\n{{senderName}}",
-    },
-    {
-      subject: "Following up",
-      body: "Hey {{receiverName}},\n\nJust following up on our last conversation. Let me know when you have a minute to chat.\n\nThanks,\n{{senderName}}",
-    },
-    {
-      subject: "Meeting notes",
-      body: "Hi {{receiverName}},\n\nHere are the key takeaways from today's meeting. Please review and let me know if I missed anything.\n\nRegards,\n{{senderName}}",
-    },
-    {
-      subject: "Checking in",
-      body: "Hi {{receiverName}},\n\nHope you're doing well! Just checking in to see how things are progressing on your end.\n\nBest wishes,\n{{senderName}}",
-    },
-    {
-      subject: "Resource sharing",
-      body: "Hi {{receiverName}},\n\nThought this might be useful for what we discussed. Let me know your thoughts when you get a chance.\n\nCheers,\n{{senderName}}",
-    },
-  ];
-
-  return templates[Math.floor(Math.random() * templates.length)];
-}
-
-/** Generate a batch of email templates for DB caching */
+/** Seed / refresh DB template cache from packaging pool (+ optional AI) */
 export async function generateTemplateBatch(
   count: number,
   provider: string = "gemini"
 ): Promise<EmailContent[]> {
+  const pool = getAllPackagingTemplates();
   const results: EmailContent[] = [];
-  for (let i = 0; i < count; i++) {
+
+  // Always include shuffled packaging templates first
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  for (const t of shuffled.slice(0, Math.min(count, shuffled.length))) {
+    results.push(t);
+  }
+
+  while (results.length < count) {
     try {
-      const content = await generateEmailContent(provider);
-      results.push(content);
-      await new Promise((r) => setTimeout(r, 500));
+      results.push(await generateEmailContent(provider));
+      await new Promise((r) => setTimeout(r, 300));
     } catch {
-      results.push(getFallbackContent());
+      results.push(getRandomPackagingTemplate());
     }
   }
+
   return results;
 }

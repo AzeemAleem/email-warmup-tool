@@ -8,7 +8,7 @@ import { ImapFlow, FetchMessageObject } from "imapflow";
 import { PrismaClient, Account } from "@prisma/client";
 import { decrypt } from "../lib/crypto";
 import { generateReplyContent } from "../lib/ai-content";
-import { personalizeEmailContent, resolveDisplayName } from "../lib/personalize";
+import { personalizeReplyContent, resolveDisplayName } from "../lib/personalize";
 import { getRedis } from "./redis";
 import logger from "./logger";
 import nodemailer from "nodemailer";
@@ -157,7 +157,7 @@ async function sendReply(
       replyerName
     );
 
-    const personalized = personalizeEmailContent(
+    const personalized = personalizeReplyContent(
       replyContent.subject,
       replyContent.body,
       replyerName,

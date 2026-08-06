@@ -1,35 +1,19 @@
 /**
- * Personalize email subject/body with real sender & receiver names.
- * Templates may use {{senderName}} / {{receiverName}} placeholders,
- * or generic AI names (Alex, Mike, etc.) which get rewritten at send time.
+ * Personalize email subject/body with real names and a professional signature.
+ *
+ * Final body structure:
+ *   Hi {FirstName},
+ *
+ *   {content}
+ *
+ *   Best Regards
+ *   {SenderName}
+ *   WhatsApp: +12293298221
+ *   Pacify Packaging.
  */
 
-const FAKE_NAMES = [
-  "Alex",
-  "Mike",
-  "John",
-  "Sarah",
-  "David",
-  "James",
-  "Jordan",
-  "Sam",
-  "Taylor",
-  "Casey",
-  "Morgan",
-  "Riley",
-  "Jamie",
-  "Avery",
-  "Quinn",
-  "Chris",
-  "Pat",
-  "Dana",
-  "Robin",
-  "Steve",
-  "Bob",
-  "Tom",
-  "Anna",
-  "Emma",
-];
+const COMPANY_SIGNATURE = `WhatsApp: +12293298221
+Pacify Packaging.`;
 
 /** Prefer display name; else local-part of email before @ */
 export function resolveDisplayName(
@@ -43,9 +27,33 @@ export function resolveDisplayName(
   return first.charAt(0).toUpperCase() + first.slice(1);
 }
 
-/** First token for greetings: "George Pacify" → "George" */
 export function firstName(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] || fullName;
+}
+
+/** Strip existing greeting / sign-off so we can rebuild a clean professional body */
+function extractContentOnly(body: string): string {
+  let text = body.replace(/\r\n/g, "\n").trim();
+
+  // Remove leading greeting lines
+  text = text.replace(
+    /^(Hi|Hey|Hello|Dear)\b[^\n]*\n+/i,
+    ""
+  );
+
+  // Remove common sign-off blocks at the end
+  text = text.replace(
+    /\n+(Best Regards|Best regards|Kind regards|Warm regards|Regards|Best|Thanks|Thank you|Cheers|Best wishes)[,!]?\s*(\n[\s\S]*)?$/i,
+    ""
+  );
+
+  // Remove leftover placeholders / fake closings
+  text = text
+    .replace(/\{\{\s*senderName\s*\}\}/gi, "")
+    .replace(/\{\{\s*receiverName\s*\}\}/gi, "")
+    .trim();
+
+  return text;
 }
 
 export function personalizeEmailContent(
@@ -54,56 +62,44 @@ export function personalizeEmailContent(
   senderName: string,
   receiverName?: string
 ): { subject: string; body: string } {
-  const sender = senderName.trim() || "there";
-  const receiver = receiverName?.trim();
-  const receiverFirst = receiver ? firstName(receiver) : undefined;
+  const sender = senderName.trim() || "Team";
+  const receiverFirst = receiverName
+    ? firstName(receiverName.trim())
+    : "there";
 
-  let personalizedSubject = subject
+  const personalizedSubject = subject
     .replace(/\{\{\s*senderName\s*\}\}/gi, sender)
-    .replace(/\{\{\s*receiverName\s*\}\}/gi, receiverFirst || "there");
+    .replace(/\{\{\s*receiverName\s*\}\}/gi, receiverFirst)
+    .trim();
 
-  let personalizedBody = body
-    .replace(/\{\{\s*senderName\s*\}\}/gi, sender)
-    .replace(/\{\{\s*receiverName\s*\}\}/gi, receiverFirst || "there");
-
-  if (receiverFirst) {
-    // Hi Alex, / Hey Mike, / Hello there, → Hi George,
-    personalizedBody = personalizedBody.replace(
-      /^(Hi|Hey|Hello)\s+(?:there|\w+)([,!]?\s*)/im,
-      `$1 ${receiverFirst}$2`
-    );
-    // Hi, → Hi George,
-    personalizedBody = personalizedBody.replace(
-      /^(Hi|Hey|Hello)([,!]\s*)/im,
-      `$1 ${receiverFirst}$2`
-    );
-  }
-
-  // Replace trailing fake sign-off names
-  const fakeNamePattern = new RegExp(
-    `(\\n|^)(${FAKE_NAMES.join("|")})\\s*$`,
-    "i"
+  const content = extractContentOnly(
+    body
+      .replace(/\{\{\s*senderName\s*\}\}/gi, sender)
+      .replace(/\{\{\s*receiverName\s*\}\}/gi, receiverFirst)
   );
-  if (fakeNamePattern.test(personalizedBody)) {
-    personalizedBody = personalizedBody.replace(fakeNamePattern, `$1${sender}`);
-  } else if (
-    /(Best|Regards|Cheers|Thanks|Best wishes|Kind regards|Warm regards)\s*,?\s*$/i.test(
-      personalizedBody.trim()
-    )
-  ) {
-    personalizedBody = `${personalizedBody.trim()}\n${sender}`;
-  } else if (
-    !new RegExp(`${escapeRegex(sender)}\\s*$`, "i").test(personalizedBody.trim())
-  ) {
-    personalizedBody = `${personalizedBody.trim()}\n\nBest,\n${sender}`;
-  }
+
+  const personalizedBody = [
+    `Hi ${receiverFirst},`,
+    "",
+    content,
+    "",
+    "Best Regards",
+    sender,
+    COMPANY_SIGNATURE,
+  ].join("\n");
 
   return {
-    subject: personalizedSubject.trim(),
-    body: personalizedBody.trim(),
+    subject: personalizedSubject,
+    body: personalizedBody,
   };
 }
 
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** Same professional format for in-thread replies */
+export function personalizeReplyContent(
+  subject: string,
+  body: string,
+  senderName: string,
+  receiverName?: string
+): { subject: string; body: string } {
+  return personalizeEmailContent(subject, body, senderName, receiverName);
 }

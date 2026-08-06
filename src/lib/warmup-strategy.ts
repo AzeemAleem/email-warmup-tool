@@ -131,14 +131,12 @@ export function selectRecipient(
   );
 
   if (sender?.role === "OLD") {
-    // Old accounts must warm new ones — never OLD → OLD
+    // Old accounts warm new ones — never OLD → OLD
     candidates = candidates.filter((a) => a.role === "NEW");
   } else if (sender?.role === "NEW") {
-    const oldCandidates = candidates.filter((a) => a.role === "OLD");
-    if (oldCandidates.length > 0) {
-      candidates = oldCandidates;
-    }
-    // else: no OLD available / all in cooldown — fall back to other NEW
+    // NEW accounts do not initiate warmup mail — they only reply in-thread.
+    // Planned outbound for NEW is volume 0; this is a hard guard.
+    return null;
   }
 
   if (candidates.length === 0) return null;
@@ -239,10 +237,8 @@ export function buildDailyPlan(
         safety.maxOldDailySendsWhenFewNew
       );
     } else if (sender.role === "NEW") {
-      targetVolume = Math.min(
-        targetVolume,
-        safety.maxInboundPerReceiverPerDay
-      );
+      // NEW never initiates — only replies in-thread via IMAP worker
+      targetVolume = 0;
     }
 
     accountVolumes[sender.id] = targetVolume;

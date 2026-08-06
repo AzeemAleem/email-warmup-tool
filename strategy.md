@@ -92,15 +92,9 @@ Pairing is role-aware:
 | Sender role | Allowed recipients |
 |-------------|-------------------|
 | **OLD** | **NEW only** — never OLD → OLD |
-| **NEW** | Prefer **OLD** (natural outbound to trusted inboxes); other NEW only if no OLD is available |
+| **NEW** | **No initiated sends** — NEW accounts only **reply in-thread** after opening mail from OLD |
 
-Among allowed candidates, exclude any pair A→B that exchanged mail in the last 6h (cooldown), then pick by weighted random:
-
-```
-weight(B) = (1 - trustWeight(B)) * 0.7 + 0.3
-```
-
-So among NEW receivers, lower-trust (newer) accounts still get slightly more inbound mail — the fastest reputation builder.
+Warmup initiation is always **OLD → NEW**. NEW→OLD independent emails are blocked.
 
 ---
 

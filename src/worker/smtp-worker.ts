@@ -127,6 +127,19 @@ async function processQueuedEvents(): Promise<void> {
       continue;
     }
 
+    // NEW accounts must not initiate independent warmup emails (only in-thread replies)
+    if (sender.role === "NEW") {
+      await prisma.warmupEvent.update({
+        where: { id: event.id },
+        data: { status: "FAILED" },
+      });
+      logger.info(
+        { eventId: event.id, from: sender.email, to: receiver.email },
+        "Skipped NEW-initiated send (NEW only replies in-thread)"
+      );
+      continue;
+    }
+
     if (sendersUsedThisTick.has(sender.id)) {
       continue;
     }
