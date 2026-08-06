@@ -4,11 +4,22 @@
  */
 import { PrismaClient } from "@prisma/client";
 import { buildDailyPlan, computeTrustWeight, computeDailyTargetVolume } from "../lib/warmup-strategy";
+import { capOldVolumeForNewPool, resolveSafetyLimits } from "../lib/safety";
 import { generateTemplateBatch } from "../lib/ai-content";
 import { personalizeEmailContent, resolveDisplayName } from "../lib/personalize";
 import logger from "./logger";
 
 const prisma = new PrismaClient();
+
+/** Statuses that count as a real (or pending) exchange for cooldown / inbound caps */
+const EXCHANGE_STATUSES = [
+  "QUEUED",
+  "SENT",
+  "DELIVERED",
+  "OPENED",
+  "REPLIED",
+  "RESCUED_FROM_SPAM",
+] as const;
 
 export async function runDailyPlanner(): Promise<void> {
   logger.info("Daily planner starting...");
@@ -35,6 +46,9 @@ export async function runDailyPlanner(): Promise<void> {
     today.setHours(0, 0, 0, 0);
 
     const totalActive = accounts.length;
+    const oldCount = accounts.filter((a) => a.role === "OLD").length;
+    const newCount = accounts.filter((a) => a.role === "NEW").length;
+    const safety = resolveSafetyLimits(config);
 
     // Recompute trust weights and daily volumes for all accounts
     for (const account of accounts) {
@@ -43,11 +57,17 @@ export async function runDailyPlanner(): Promise<void> {
         config.rampUpDays,
         new Date()
       );
-      // NEW accounts do not initiate — only OLD get planned send volume
-      const dailyTarget =
-        account.role === "OLD"
-          ? computeDailyTargetVolume(tw, totalActive, config, true)
-          : 0;
+      // NEW accounts do not initiate — only OLD get planned send volume (capped)
+      let dailyTarget = 0;
+      if (account.role === "OLD") {
+        dailyTarget = capOldVolumeForNewPool(
+          computeDailyTargetVolume(tw, totalActive, config, true),
+          oldCount,
+          newCount,
+          safety.maxInboundPerReceiverPerDay,
+          safety.maxOldDailySendsWhenFewNew
+        );
+      }
 
       await prisma.account.update({
         where: { id: account.id },
@@ -70,12 +90,15 @@ export async function runDailyPlanner(): Promise<void> {
       );
     }
 
-    // Build the pair cooldown set (last minPairCooldownHours)
+    // Pair cooldown: only real/pending exchanges (ignore FAILED from emergency-stop)
     const cooldownSince = new Date(
       Date.now() - config.minPairCooldownHours * 60 * 60 * 1000
     );
     const recentEvents = await prisma.warmupEvent.findMany({
-      where: { scheduledFor: { gte: cooldownSince } },
+      where: {
+        scheduledFor: { gte: cooldownSince },
+        status: { in: [...EXCHANGE_STATUSES] },
+      },
       select: { senderId: true, receiverId: true },
     });
 
@@ -85,6 +108,26 @@ export async function runDailyPlanner(): Promise<void> {
         recentPairsMap[evt.senderId] = new Set();
       }
       recentPairsMap[evt.senderId].add(`${evt.senderId}:${evt.receiverId}`);
+    }
+
+    // Inbound already used today per receiver (so flood days do not schedule more)
+    const inboundRows = await prisma.warmupEvent.groupBy({
+      by: ["receiverId"],
+      where: {
+        scheduledFor: { gte: today },
+        status: { in: [...EXCHANGE_STATUSES] },
+      },
+      _count: { _all: true },
+    });
+    const inboundAlreadyToday: Record<string, number> = {};
+    for (const row of inboundRows) {
+      inboundAlreadyToday[row.receiverId] = row._count._all;
+    }
+    if (Object.keys(inboundAlreadyToday).length > 0) {
+      logger.info(
+        { inboundAlreadyToday, maxPerDay: safety.maxInboundPerReceiverPerDay },
+        "Inbound already counted toward today's NEW caps"
+      );
     }
 
     // Refresh packaging template cache (replace stale "Meeting notes" style templates)
@@ -151,10 +194,44 @@ export async function runDailyPlanner(): Promise<void> {
       accountInputs,
       configInput,
       today,
-      (senderId) => recentPairsMap[senderId] || new Set()
+      (senderId) => recentPairsMap[senderId] || new Set(),
+      Math.random,
+      inboundAlreadyToday
     );
 
-    logger.info(`Daily plan: ${plan.slots.length} send slots across ${accounts.length} accounts`);
+    // Persist volumes that reflect what was actually scheduled
+    const scheduledBySender: Record<string, number> = {};
+    for (const a of accounts) {
+      scheduledBySender[a.id] = 0;
+    }
+    for (const slot of plan.slots) {
+      scheduledBySender[slot.senderId] =
+        (scheduledBySender[slot.senderId] || 0) + 1;
+    }
+    for (const [accountId, volume] of Object.entries(scheduledBySender)) {
+      await prisma.account.update({
+        where: { id: accountId },
+        data: { dailyTargetVolume: volume },
+      });
+    }
+
+    logger.info(
+      `Daily plan: ${plan.slots.length} send slots across ${accounts.length} accounts`
+    );
+    if (plan.slots.length === 0 && oldCount > 0 && newCount > 0) {
+      logger.warn(
+        {
+          oldCount,
+          newCount,
+          inboundAlreadyToday,
+          maxInboundPerDay: safety.maxInboundPerReceiverPerDay,
+          cooldownPairs: Object.fromEntries(
+            Object.entries(recentPairsMap).map(([k, v]) => [k, [...v]])
+          ),
+        },
+        "0 send slots — NEW inboxes may already be at today's inbound cap, or no eligible pairs. Wait until tomorrow or lower prior SENT volume."
+      );
+    }
 
     // Write WarmupEvent rows for each slot (personalized with real names)
     const accountById = new Map(accounts.map((a) => [a.id, a]));

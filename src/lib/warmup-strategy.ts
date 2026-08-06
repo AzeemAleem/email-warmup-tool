@@ -193,13 +193,17 @@ export function generateSendTimestamps(
 /**
  * Build the full daily plan for all active accounts.
  * Returns SendSlots with scheduledFor timestamps.
+ *
+ * @param inboundAlreadyToday - successful+queued inbound counts per receiver today
+ *   (used so we do not schedule past maxInboundPerReceiverPerDay after a flood)
  */
 export function buildDailyPlan(
   accounts: AccountInput[],
   config: ConfigInput,
   today: Date = new Date(),
   recentPairsFn: (senderId: string) => Set<string> = () => new Set(),
-  rng: RngFn = Math.random
+  rng: RngFn = Math.random,
+  inboundAlreadyToday: Record<string, number> = {}
 ): DailyPlan {
   const activeAccounts = accounts.filter((a) => a.status === "ACTIVE");
   if (activeAccounts.length < 2) {
@@ -218,6 +222,9 @@ export function buildDailyPlan(
   const oldCount = oldAccounts.length;
   const newCount = newAccounts.length;
   const safety = resolveSafetyLimits(config);
+
+  // Remaining inbound capacity per NEW (plan-local + already delivered today)
+  const inboundUsed: Record<string, number> = { ...inboundAlreadyToday };
 
   // Compute volumes and generate timestamps
   const accountVolumes: Record<string, number> = {};
@@ -253,10 +260,11 @@ export function buildDailyPlan(
       rng
     );
 
-    const recentPairs = recentPairsFn(sender.id);
+    // Mutable copy so same-day plan doesn't reuse the same pair repeatedly
+    const recentPairs = new Set(recentPairsFn(sender.id));
 
     for (const ts of timestamps) {
-      const recipient = selectRecipient(
+      let recipient = selectRecipient(
         sender.id,
         activeAccounts,
         trustWeights,
@@ -265,7 +273,28 @@ export function buildDailyPlan(
         sender.role
       );
 
+      // Soften cooldown: if every NEW is on cooldown but still has inbound room,
+      // allow the pair anyway (avoids 0-slot days after FAILED/flood noise).
+      if (!recipient && sender.role === "OLD") {
+        recipient = selectRecipient(
+          sender.id,
+          activeAccounts,
+          trustWeights,
+          new Set(),
+          rng,
+          sender.role
+        );
+      }
+
       if (!recipient) continue;
+
+      const used = inboundUsed[recipient.id] ?? 0;
+      if (used >= safety.maxInboundPerReceiverPerDay) {
+        continue;
+      }
+
+      inboundUsed[recipient.id] = used + 1;
+      recentPairs.add(`${sender.id}:${recipient.id}`);
 
       allSlots.push({
         senderId: sender.id,

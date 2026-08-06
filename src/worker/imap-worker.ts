@@ -31,16 +31,27 @@ async function connectImap(account: Account): Promise<ImapFlow | null> {
       pass: appPassword,
     },
     logger: false,
-    connectionTimeout: 15000,
+    emitLogs: false,
+    connectionTimeout: 60_000,
+    greetingTimeout: 30_000,
+    socketTimeout: 90_000,
+  });
+
+  // Prevent unhandled socket timeout from crashing the process / flooding stderr
+  client.on("error", (err: Error) => {
+    logger.warn(
+      { email: account.email, err: err.message, code: (err as { code?: string }).code },
+      "IMAP client error (non-fatal)"
+    );
   });
 
   try {
     await client.connect();
     return client;
   } catch (err: unknown) {
-    const error = err as Error;
+    const error = err as Error & { code?: string };
     logger.error(
-      { accountId: account.id, email: account.email, err: error.message },
+      { accountId: account.id, email: account.email, err: error.message, code: error.code },
       "IMAP connection failed"
     );
 
@@ -69,6 +80,12 @@ async function checkInboxForOpens(
   config: { replyProbability: number; aiProvider: string }
 ): Promise<void> {
   const lock = await client.getMailboxLock("INBOX");
+  const matched: Array<{
+    eventId: string;
+    uid: number;
+    messageId: string | null;
+  }> = [];
+
   try {
     // Search for unread messages from warmup pool senders
     const sentEvents = await prisma.warmupEvent.findMany({
@@ -83,8 +100,6 @@ async function checkInboxForOpens(
 
     if (sentEvents.length === 0) return;
 
-    const knownMessageIds = new Set(sentEvents.map((e) => e.messageId).filter(Boolean));
-
     for await (const msg of client.fetch(
       { seen: false },
       { uid: true, envelope: true, flags: true }
@@ -92,7 +107,6 @@ async function checkInboxForOpens(
       const msgId = msg.envelope?.messageId;
       if (!msgId) continue;
 
-      // Check if this matches a known warmup event
       const matchedEvent = sentEvents.find(
         (e) =>
           e.messageId === msgId ||
@@ -102,36 +116,48 @@ async function checkInboxForOpens(
 
       if (!matchedEvent) continue;
 
-      // Mark as seen (simulate reading)
+      // Mark seen immediately — do NOT hold the IMAP socket for human-like delays
       await client.messageFlagsAdd({ uid: msg.uid }, ["\\Seen"]);
-
-      // Simulate human read delay: 1-10 minutes
-      const readDelay = 60000 + Math.random() * 9 * 60000;
-      await new Promise((r) => setTimeout(r, readDelay));
-
-      // Update event to OPENED
-      await prisma.warmupEvent.update({
-        where: { id: matchedEvent.id },
-        data: { status: "OPENED", openedAt: new Date() },
+      matched.push({
+        eventId: matchedEvent.id,
+        uid: msg.uid,
+        messageId: matchedEvent.messageId,
       });
-
-      logger.info(
-        { eventId: matchedEvent.id, receiverEmail: account.email },
-        "Warmup email marked as OPENED"
-      );
-
-      // Roll reply probability
-      if (Math.random() < config.replyProbability) {
-        const replyDelay =
-          2 * 60 * 1000 + Math.random() * 43 * 60 * 1000; // 2-45 min
-
-        setTimeout(async () => {
-          await sendReply(matchedEvent, account, config.aiProvider);
-        }, replyDelay);
-      }
     }
   } finally {
     lock.release();
+  }
+
+  // Schedule open/reply AFTER releasing the mailbox (avoids ETIMEOUT on idle socket)
+  for (const m of matched) {
+    const event = await prisma.warmupEvent.findUnique({
+      where: { id: m.eventId },
+      include: { sender: true },
+    });
+    if (!event || event.status !== "SENT") continue;
+
+    const readDelay = 60_000 + Math.random() * 9 * 60_000; // 1–10 min
+    setTimeout(async () => {
+      try {
+        await prisma.warmupEvent.update({
+          where: { id: event.id },
+          data: { status: "OPENED", openedAt: new Date() },
+        });
+        logger.info(
+          { eventId: event.id, receiverEmail: account.email },
+          "Warmup email marked as OPENED"
+        );
+
+        if (Math.random() < config.replyProbability) {
+          const replyDelay = 2 * 60_000 + Math.random() * 43 * 60_000;
+          setTimeout(async () => {
+            await sendReply(event, account, config.aiProvider);
+          }, replyDelay);
+        }
+      } catch (err) {
+        logger.error({ err, eventId: event.id }, "Failed delayed OPENED update");
+      }
+    }, readDelay);
   }
 }
 
@@ -312,7 +338,15 @@ async function pollAccount(accountId: string): Promise<void> {
         aiProvider: config.aiProvider,
       });
     } finally {
-      await client.logout().catch(() => {});
+      try {
+        await client.logout();
+      } catch {
+        try {
+          client.close();
+        } catch {
+          /* ignore */
+        }
+      }
     }
   } catch (err) {
     logger.error({ err, accountId }, "IMAP poll error");
@@ -347,11 +381,9 @@ export function startImapWorker(): Worker {
         select: { id: true },
       });
 
-      // Poll each account in parallel (with concurrency limit)
-      const concurrency = 3;
-      for (let i = 0; i < accounts.length; i += concurrency) {
-        const batch = accounts.slice(i, i + concurrency);
-        await Promise.all(batch.map((a) => pollAccount(a.id)));
+      // Sequential polls — Gmail rate-limits concurrent IMAP from one IP
+      for (const a of accounts) {
+        await pollAccount(a.id);
       }
     },
     {
