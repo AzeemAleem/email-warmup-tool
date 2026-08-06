@@ -226,7 +226,7 @@ export async function runDailyPlanner(): Promise<void> {
           inboundAlreadyToday,
           maxInboundPerDay: safety.maxInboundPerReceiverPerDay,
           cooldownPairs: Object.fromEntries(
-            Object.entries(recentPairsMap).map(([k, v]) => [k, [...v]])
+            Object.entries(recentPairsMap).map(([k, v]) => [k, Array.from(v)])
           ),
         },
         "0 send slots — NEW inboxes may already be at today's inbound cap, or no eligible pairs. Wait until tomorrow or lower prior SENT volume."
