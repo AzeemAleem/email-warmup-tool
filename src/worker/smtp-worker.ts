@@ -1,20 +1,21 @@
 /**
- * SMTP send worker: BullMQ repeatable job every 5 minutes.
+ * SMTP send worker: runs on a Contabo timer every 5 minutes (no Redis/BullMQ).
  * Queries QUEUED events due for sending, sends via nodemailer.
  */
-import { Queue, Worker, Job } from "bullmq";
 import nodemailer from "nodemailer";
 import { PrismaClient } from "@prisma/client";
 import { decrypt } from "../lib/crypto";
 import { personalizeEmailContent, resolveDisplayName } from "../lib/personalize";
 import { resolveSafetyLimits } from "../lib/safety";
-import { getRedis } from "./redis";
 import logger from "./logger";
 
 const prisma = new PrismaClient();
 
-const QUEUE_NAME = "smtp-send";
-const SMTP_SEND_JOB = "process-queued-events";
+const SMTP_INTERVAL_MS = 5 * 60 * 1000;
+
+export type IntervalWorkerHandle = {
+  close: () => Promise<void>;
+};
 
 // Pool of SMTP transports keyed by accountId
 const transporterPool: Map<string, nodemailer.Transporter> = new Map();
@@ -318,39 +319,29 @@ async function processQueuedEvents(): Promise<void> {
   }
 }
 
-export function startSmtpWorker(): Worker {
-  const redis = getRedis();
+export function startSmtpWorker(): IntervalWorkerHandle {
+  let running = false;
 
-  const queue = new Queue(QUEUE_NAME, { connection: redis });
-
-  // Register repeatable job every 5 minutes
-  queue.add(
-    SMTP_SEND_JOB,
-    {},
-    {
-      repeat: { every: 5 * 60 * 1000 }, // 5 minutes
-      removeOnComplete: 10,
-      removeOnFail: 20,
+  const tick = async () => {
+    if (running) return;
+    running = true;
+    try {
+      await processQueuedEvents();
+    } catch (err) {
+      logger.error({ err }, "SMTP worker tick failed");
+    } finally {
+      running = false;
     }
-  );
+  };
 
-  const worker = new Worker(
-    QUEUE_NAME,
-    async (job: Job) => {
-      if (job.name === SMTP_SEND_JOB) {
-        await processQueuedEvents();
-      }
+  // Run once on start, then every 5 minutes
+  void tick();
+  const timer = setInterval(() => void tick(), SMTP_INTERVAL_MS);
+
+  logger.info("SMTP worker started (5-minute interval, no Redis)");
+  return {
+    close: async () => {
+      clearInterval(timer);
     },
-    {
-      connection: redis,
-      concurrency: 1, // Process one batch at a time
-    }
-  );
-
-  worker.on("failed", (job, err) => {
-    logger.error({ jobId: job?.id, err }, "SMTP worker job failed");
-  });
-
-  logger.info("SMTP worker started (5-minute interval)");
-  return worker;
+  };
 }

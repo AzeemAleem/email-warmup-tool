@@ -15,8 +15,8 @@ import logger from "./logger";
 async function main() {
   logger.info("Email warmup worker process starting...");
 
-  // Validate required env vars
-  const requiredEnvVars = ["DATABASE_URL", "REDIS_URL", "ENCRYPTION_KEY"];
+  // Validate required env vars (Redis/BullMQ no longer used — Contabo timers only)
+  const requiredEnvVars = ["DATABASE_URL", "ENCRYPTION_KEY"];
   for (const envVar of requiredEnvVars) {
     if (!process.env[envVar]) {
       logger.error(`Missing required environment variable: ${envVar}`);
@@ -67,7 +67,7 @@ async function main() {
     }
   });
 
-  // Start BullMQ workers
+  // Start interval workers (no Redis)
   const smtpWorker = startSmtpWorker();
   const imapWorker = startImapWorker();
 
@@ -83,7 +83,7 @@ async function main() {
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));
 
-  logger.info("All workers running. Waiting for jobs...");
+  logger.info("All workers running (SMTP 5m / IMAP 7m timers)...");
 }
 
 main().catch((err) => {

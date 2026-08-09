@@ -1,21 +1,19 @@
 /**
- * IMAP worker: polls each account every 5-10 minutes.
+ * IMAP worker: polls each account every 7 minutes (Contabo timer, no Redis/BullMQ).
  * - Checks INBOX for new warmup mail → marks OPENED, optionally replies
  * - Checks [Gmail]/Spam → rescues warmup mail (moves to Inbox, marks not-spam)
  */
-import { Queue, Worker, Job } from "bullmq";
 import { ImapFlow, FetchMessageObject } from "imapflow";
 import { PrismaClient, Account } from "@prisma/client";
 import { decrypt } from "../lib/crypto";
 import { generateReplyContent } from "../lib/ai-content";
 import { personalizeReplyContent, resolveDisplayName } from "../lib/personalize";
-import { getRedis } from "./redis";
 import logger from "./logger";
 import nodemailer from "nodemailer";
+import type { IntervalWorkerHandle } from "./smtp-worker";
 
 const prisma = new PrismaClient();
-const QUEUE_NAME = "imap-check";
-const IMAP_JOB = "check-imap";
+const IMAP_INTERVAL_MS = 7 * 60 * 1000;
 
 // Track which accounts we're currently polling (prevent concurrent polls per account)
 const activePollSet = new Set<string>();
@@ -355,47 +353,42 @@ async function pollAccount(accountId: string): Promise<void> {
   }
 }
 
-export function startImapWorker(): Worker {
-  const redis = getRedis();
-
-  const queue = new Queue(QUEUE_NAME, { connection: redis });
-
-  // Register repeatable job every 7 minutes (stagger from SMTP worker)
-  queue.add(
-    IMAP_JOB,
-    {},
-    {
-      repeat: { every: 7 * 60 * 1000 },
-      removeOnComplete: 10,
-      removeOnFail: 20,
-    }
-  );
-
-  const worker = new Worker(
-    QUEUE_NAME,
-    async (job: Job) => {
-      if (job.name !== IMAP_JOB) return;
-
-      const accounts = await prisma.account.findMany({
-        where: { status: "ACTIVE" },
-        select: { id: true },
-      });
-
-      // Sequential polls — Gmail rate-limits concurrent IMAP from one IP
-      for (const a of accounts) {
-        await pollAccount(a.id);
-      }
-    },
-    {
-      connection: redis,
-      concurrency: 1,
-    }
-  );
-
-  worker.on("failed", (job, err) => {
-    logger.error({ jobId: job?.id, err }, "IMAP worker job failed");
+async function pollAllAccounts(): Promise<void> {
+  const accounts = await prisma.account.findMany({
+    where: { status: "ACTIVE" },
+    select: { id: true },
   });
 
-  logger.info("IMAP worker started (7-minute interval)");
-  return worker;
+  // Sequential polls — Gmail rate-limits concurrent IMAP from one IP
+  for (const a of accounts) {
+    await pollAccount(a.id);
+  }
+}
+
+export function startImapWorker(): IntervalWorkerHandle {
+  let running = false;
+
+  const tick = async () => {
+    if (running) return;
+    running = true;
+    try {
+      await pollAllAccounts();
+    } catch (err) {
+      logger.error({ err }, "IMAP worker tick failed");
+    } finally {
+      running = false;
+    }
+  };
+
+  // Stagger first IMAP poll slightly so it doesn't collide with SMTP on startup
+  const startupDelay = setTimeout(() => void tick(), 30_000);
+  const timer = setInterval(() => void tick(), IMAP_INTERVAL_MS);
+
+  logger.info("IMAP worker started (7-minute interval, no Redis)");
+  return {
+    close: async () => {
+      clearTimeout(startupDelay);
+      clearInterval(timer);
+    },
+  };
 }

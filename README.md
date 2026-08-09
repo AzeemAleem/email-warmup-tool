@@ -7,7 +7,7 @@ A full-stack email warmup automation tool that builds Gmail account reputation b
 - **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS, Recharts
 - **Backend**: Next.js API Routes + separate Node.js worker process
 - **Database**: PostgreSQL + Prisma ORM
-- **Queue**: BullMQ + Redis
+- **Worker scheduling**: Contabo `setInterval` timers (SMTP 5m / IMAP 7m; no Redis)
 - **Email**: Gmail SMTP (nodemailer) + IMAP (imapflow)
 - **AI Content**: Gemini (primary) + Groq (fallback)
 - **Process Management**: PM2
@@ -16,7 +16,6 @@ A full-stack email warmup automation tool that builds Gmail account reputation b
 
 - Node.js 18+
 - PostgreSQL database
-- Redis instance
 - Gmail accounts with 2FA enabled + App Passwords generated
 - Gemini API key (free tier) and/or Groq API key (free tier)
 
@@ -38,7 +37,6 @@ Edit `.env.local`:
 
 ```env
 DATABASE_URL="postgresql://user:password@localhost:5432/email_warmup"
-REDIS_URL="redis://localhost:6379"
 ENCRYPTION_KEY="<64-char hex key>"   # node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 GEMINI_API_KEY="your-key"
 GROQ_API_KEY="your-key"              # optional fallback
