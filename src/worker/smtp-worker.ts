@@ -8,6 +8,7 @@ import { decrypt } from "../lib/crypto";
 import { personalizeEmailContent, resolveDisplayName } from "../lib/personalize";
 import { resolveSafetyLimits } from "../lib/safety";
 import logger from "./logger";
+import { processPendingNewReplies } from "./imap-worker";
 
 const prisma = new PrismaClient();
 
@@ -327,6 +328,8 @@ export function startSmtpWorker(): IntervalWorkerHandle {
     running = true;
     try {
       await processQueuedEvents();
+      // NEW→OLD replies must not depend on IMAP (George's IMAP often times out)
+      await processPendingNewReplies();
     } catch (err) {
       logger.error({ err }, "SMTP worker tick failed");
     } finally {

@@ -346,8 +346,8 @@ export function ConfigForm({ config }: ConfigFormProps) {
               className={inputClass}
             />
             <p className={hintClass}>
-              After open: chance to reply in the same Gmail thread (2–45 min
-              later)
+              Chance an OLD inbox replies after opening. NEW accounts (e.g.
+              George) always reply in-thread to OLD warmup mail.
             </p>
           </div>
           <div>

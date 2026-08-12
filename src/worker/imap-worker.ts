@@ -10,13 +10,25 @@ import { generateReplyContent } from "../lib/ai-content";
 import { personalizeReplyContent, resolveDisplayName } from "../lib/personalize";
 import logger from "./logger";
 import nodemailer from "nodemailer";
-import type { IntervalWorkerHandle } from "./smtp-worker";
 
 const prisma = new PrismaClient();
 const IMAP_INTERVAL_MS = 7 * 60 * 1000;
 
+export type IntervalWorkerHandle = {
+  close: () => Promise<void>;
+};
+
 // Track which accounts we're currently polling (prevent concurrent polls per account)
 const activePollSet = new Set<string>();
+const replyInFlight = new Set<string>();
+
+/** Statuses that still need an open and/or a NEW→OLD in-thread reply */
+const OPENABLE_STATUSES = [
+  "SENT",
+  "DELIVERED",
+  "OPENED",
+  "RESCUED_FROM_SPAM",
+] as const;
 
 async function connectImap(account: Account): Promise<ImapFlow | null> {
   const appPassword = decrypt(account.appPassword);
@@ -75,22 +87,19 @@ async function connectImap(account: Account): Promise<ImapFlow | null> {
 async function checkInboxForOpens(
   client: ImapFlow,
   account: Account,
-  config: { replyProbability: number; aiProvider: string }
+  _config: { replyProbability: number; aiProvider: string }
 ): Promise<void> {
   const lock = await client.getMailboxLock("INBOX");
-  const matched: Array<{
-    eventId: string;
-    uid: number;
-    messageId: string | null;
-  }> = [];
+  const matchedIds: string[] = [];
 
   try {
-    // Search for unread messages from warmup pool senders
+    // Include rescued/delivered — spam rescue used to set RESCUED_FROM_SPAM
+    // which previously skipped the open/reply funnel entirely.
     const sentEvents = await prisma.warmupEvent.findMany({
       where: {
         receiverId: account.id,
-        status: "SENT",
-        messageId: { not: null },
+        status: { in: [...OPENABLE_STATUSES] },
+        repliedAt: null,
       },
       include: { sender: true },
       take: 50,
@@ -102,60 +111,45 @@ async function checkInboxForOpens(
       { seen: false },
       { uid: true, envelope: true, flags: true }
     ) as AsyncIterable<FetchMessageObject>) {
+      const fromAddr = msg.envelope?.from?.[0]?.address?.toLowerCase();
       const msgId = msg.envelope?.messageId;
-      if (!msgId) continue;
 
       const matchedEvent = sentEvents.find(
         (e) =>
-          e.messageId === msgId ||
-          (msg.envelope?.from?.[0]?.address &&
-            e.sender.email === msg.envelope.from[0].address)
+          (msgId && e.messageId === msgId) ||
+          (fromAddr && e.sender.email.toLowerCase() === fromAddr)
       );
 
       if (!matchedEvent) continue;
 
-      // Mark seen immediately — do NOT hold the IMAP socket for human-like delays
       await client.messageFlagsAdd({ uid: msg.uid }, ["\\Seen"]);
-      matched.push({
-        eventId: matchedEvent.id,
-        uid: msg.uid,
-        messageId: matchedEvent.messageId,
-      });
+      matchedIds.push(matchedEvent.id);
     }
   } finally {
     lock.release();
   }
 
-  // Schedule open/reply AFTER releasing the mailbox (avoids ETIMEOUT on idle socket)
-  for (const m of matched) {
-    const event = await prisma.warmupEvent.findUnique({
-      where: { id: m.eventId },
-      include: { sender: true },
-    });
-    if (!event || event.status !== "SENT") continue;
+  // Persist OPENED immediately (no in-memory setTimeout — those die on pm2 restart).
+  // NEW→OLD replies are sent by processPendingNewReplies on the SMTP tick.
+  for (const eventId of matchedIds) {
+    try {
+      const event = await prisma.warmupEvent.findUnique({
+        where: { id: eventId },
+      });
+      if (!event || event.repliedAt) continue;
+      if (event.status === "REPLIED") continue;
 
-    const readDelay = 60_000 + Math.random() * 9 * 60_000; // 1–10 min
-    setTimeout(async () => {
-      try {
-        await prisma.warmupEvent.update({
-          where: { id: event.id },
-          data: { status: "OPENED", openedAt: new Date() },
-        });
-        logger.info(
-          { eventId: event.id, receiverEmail: account.email },
-          "Warmup email marked as OPENED"
-        );
-
-        if (Math.random() < config.replyProbability) {
-          const replyDelay = 2 * 60_000 + Math.random() * 43 * 60_000;
-          setTimeout(async () => {
-            await sendReply(event, account, config.aiProvider);
-          }, replyDelay);
-        }
-      } catch (err) {
-        logger.error({ err, eventId: event.id }, "Failed delayed OPENED update");
-      }
-    }, readDelay);
+      await prisma.warmupEvent.update({
+        where: { id: eventId },
+        data: { status: "OPENED", openedAt: event.openedAt ?? new Date() },
+      });
+      logger.info(
+        { eventId, receiverEmail: account.email },
+        "Warmup email marked as OPENED"
+      );
+    } catch (err) {
+      logger.error({ err, eventId }, "Failed OPENED update");
+    }
   }
 }
 
@@ -165,6 +159,12 @@ async function sendReply(
   aiProvider: string
 ): Promise<void> {
   try {
+    const latest = await prisma.warmupEvent.findUnique({
+      where: { id: originalEvent.id },
+      select: { status: true, repliedAt: true },
+    });
+    if (!latest || latest.repliedAt || latest.status === "REPLIED") return;
+
     const replyerName = resolveDisplayName(
       replierAccount.displayName,
       replierAccount.email
@@ -230,11 +230,65 @@ async function sendReply(
     });
 
     logger.info(
-      { originalEventId: originalEvent.id, replyFrom: replierAccount.email },
-      "Reply sent"
+      {
+        originalEventId: originalEvent.id,
+        replyFrom: replierAccount.email,
+        replyTo: originalEvent.sender.email,
+      },
+      "NEW account in-thread reply sent to OLD"
     );
   } catch (err) {
     logger.error({ err, originalEventId: originalEvent.id }, "Failed to send reply");
+  }
+}
+
+/**
+ * NEW accounts always reply in-thread to OLD warmup mail.
+ * Does not depend on IMAP succeeding — SMTP is enough so George still
+ * replies when Gmail IMAP times out on Contabo.
+ */
+export async function processPendingNewReplies(): Promise<void> {
+  const config = await prisma.warmupConfig.findUnique({
+    where: { id: "singleton" },
+  });
+  if (!config) return;
+
+  const now = Date.now();
+  const openedReady = new Date(now - 2 * 60 * 1000);
+  const sentReady = new Date(now - 12 * 60 * 1000);
+  const since = new Date(now - 24 * 60 * 60 * 1000);
+
+  const candidates = await prisma.warmupEvent.findMany({
+    where: {
+      repliedAt: null,
+      status: { in: [...OPENABLE_STATUSES] },
+      receiver: { role: "NEW", status: "ACTIVE" },
+      sender: { role: "OLD", status: "ACTIVE" },
+      OR: [
+        { openedAt: { lte: openedReady, gte: since } },
+        { sentAt: { lte: sentReady, gte: since } },
+      ],
+    },
+    include: { sender: true, receiver: true },
+    orderBy: { sentAt: "asc" },
+    take: 3,
+  });
+
+  if (candidates.length === 0) return;
+
+  logger.info(
+    { count: candidates.length },
+    "Pending NEW→OLD in-thread replies"
+  );
+
+  for (const event of candidates) {
+    if (replyInFlight.has(event.id)) continue;
+    replyInFlight.add(event.id);
+    try {
+      await sendReply(event, event.receiver, config.aiProvider);
+    } finally {
+      replyInFlight.delete(event.id);
+    }
   }
 }
 
@@ -261,8 +315,9 @@ async function rescueSpam(
 
       const msgsToMove: number[] = [];
 
+      // Only unseen spam — fetching 1:* on a large Spam folder causes ETIMEOUT
       for await (const msg of client.fetch(
-        "1:*",
+        { seen: false },
         { uid: true, envelope: true }
       ) as AsyncIterable<FetchMessageObject>) {
         const fromAddr = msg.envelope?.from?.[0]?.address;
@@ -285,7 +340,11 @@ async function rescueSpam(
               data: {
                 landedInSpam: true,
                 rescuedAt: new Date(),
-                status: "RESCUED_FROM_SPAM",
+                // Keep SENT so the open/reply funnel still runs
+                status:
+                  event.status === "SENT" || event.status === "DELIVERED"
+                    ? event.status
+                    : "SENT",
               },
             });
 
@@ -329,21 +388,35 @@ async function pollAccount(accountId: string): Promise<void> {
 
     try {
       if (config.spamRescueEnabled) {
-        await rescueSpam(client, account);
+        try {
+          await rescueSpam(client, account);
+        } catch (err) {
+          logger.warn(
+            { err, email: account.email },
+            "Spam rescue skipped (IMAP error) — still checking INBOX"
+          );
+        }
       }
-      await checkInboxForOpens(client, account, {
-        replyProbability: config.replyProbability,
-        aiProvider: config.aiProvider,
-      });
+      try {
+        await checkInboxForOpens(client, account, {
+          replyProbability: config.replyProbability,
+          aiProvider: config.aiProvider,
+        });
+      } catch (err) {
+        logger.warn(
+          { err, email: account.email },
+          "INBOX open-check failed — replies still go out via SMTP fallback"
+        );
+      }
     } finally {
       try {
-        await client.logout();
-      } catch {
-        try {
+        if (client.usable) {
+          await client.logout();
+        } else {
           client.close();
-        } catch {
-          /* ignore */
         }
+      } catch {
+        /* socket already dead */
       }
     }
   } catch (err) {
@@ -373,6 +446,7 @@ export function startImapWorker(): IntervalWorkerHandle {
     running = true;
     try {
       await pollAllAccounts();
+      await processPendingNewReplies();
     } catch (err) {
       logger.error({ err }, "IMAP worker tick failed");
     } finally {
