@@ -5,6 +5,7 @@
 import { PrismaClient } from "@prisma/client";
 import { buildDailyPlan, computeTrustWeight, computeDailyTargetVolume } from "../lib/warmup-strategy";
 import { capOldVolumeForNewPool, resolveSafetyLimits } from "../lib/safety";
+import { getAllPackagingTemplates } from "../lib/email-templates";
 import { generateTemplateBatch } from "../lib/ai-content";
 import { personalizeEmailContent, resolveDisplayName } from "../lib/personalize";
 import logger from "./logger";
@@ -130,39 +131,23 @@ export async function runDailyPlanner(): Promise<void> {
       );
     }
 
-    // Refresh packaging template cache (replace stale "Meeting notes" style templates)
-    const templateCount = await prisma.contentTemplate.count();
-    const staleMeeting = await prisma.contentTemplate.count({
-      where: {
-        OR: [
-          { subject: { contains: "Meeting", mode: "insensitive" } },
-          { subject: { contains: "Quick update", mode: "insensitive" } },
-          { body: { contains: "Alex", mode: "insensitive" } },
-        ],
-      },
+    // Always refresh from the packaging question pool (ignore stale DB "meeting" templates)
+    logger.info("Refreshing packaging content templates...");
+    await prisma.contentTemplate.deleteMany({});
+    const newTemplates = await generateTemplateBatch(80, config.aiProvider);
+    await prisma.contentTemplate.createMany({
+      data: newTemplates.map((t) => ({
+        subject: t.subject,
+        body: t.body,
+      })),
     });
+    logger.info(`Seeded ${newTemplates.length} packaging templates`);
 
-    if (templateCount < 40 || staleMeeting > 5) {
-      logger.info("Refreshing packaging content templates...");
-      await prisma.contentTemplate.deleteMany({});
-      const newTemplates = await generateTemplateBatch(60, config.aiProvider);
-      await prisma.contentTemplate.createMany({
-        data: newTemplates.map((t) => ({
-          subject: t.subject,
-          body: t.body,
-        })),
-      });
-      logger.info(`Seeded ${newTemplates.length} packaging templates`);
-    }
-
-    // Get available templates
-    const templates = await prisma.contentTemplate.findMany({
-      orderBy: { usedCount: "asc" },
-      take: 100,
-    });
-
-    if (templates.length === 0) {
-      logger.error("No content templates available, cannot generate plan");
+    const packagingPool = getAllPackagingTemplates().sort(
+      () => Math.random() - 0.5
+    );
+    if (packagingPool.length === 0) {
+      logger.error("No packaging templates available, cannot generate plan");
       return;
     }
 
@@ -235,10 +220,8 @@ export async function runDailyPlanner(): Promise<void> {
 
     // Write WarmupEvent rows for each slot (personalized with real names)
     const accountById = new Map(accounts.map((a) => [a.id, a]));
-    let templateIdx = 0;
-    const eventsToCreate = plan.slots.map((slot) => {
-      const template = templates[templateIdx % templates.length];
-      templateIdx++;
+    const eventsToCreate = plan.slots.map((slot, i) => {
+      const template = packagingPool[i % packagingPool.length];
       const sender = accountById.get(slot.senderId);
       const receiver = accountById.get(slot.receiverId);
       const senderName = resolveDisplayName(
@@ -267,15 +250,6 @@ export async function runDailyPlanner(): Promise<void> {
 
     if (eventsToCreate.length > 0) {
       await prisma.warmupEvent.createMany({ data: eventsToCreate });
-
-      // Update usedCount on templates
-      const usedTemplateIds = templates
-        .slice(0, Math.min(templateIdx, templates.length))
-        .map((t) => t.id);
-      await prisma.contentTemplate.updateMany({
-        where: { id: { in: usedTemplateIds } },
-        data: { usedCount: { increment: 1 }, lastUsedAt: new Date() },
-      });
     }
 
     logger.info(`Daily plan complete: created ${eventsToCreate.length} warmup events`);

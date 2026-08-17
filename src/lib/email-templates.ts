@@ -308,3 +308,24 @@ export function getRandomPackagingTemplate(): EmailContent {
 export function getAllPackagingTemplates(): EmailContent[] {
   return [...PACKAGING_TEMPLATES];
 }
+
+/** Short in-thread replies that stay on the packaging topic */
+const PACKAGING_REPLIES: string[] = [
+  "Good question — I'll check with production and send you a clear answer on options and lead time.",
+  "We can help with that. Let me confirm the specs and follow up with the best approach.",
+  "Thanks for sending this over. I'll review it on our side and get back with a recommendation.",
+  "Yes, that's something we handle. I'll share material and pricing notes shortly.",
+  "Got it — I'll look at the current run and confirm what we can do for this order.",
+  "Makes sense. I'll check stock and turnaround and reply with next steps.",
+  "I can look into that. Give me a bit and I'll send the details so you can compare.",
+  "Thanks for the update. I'll confirm with the team and follow up on this thread.",
+];
+
+export function getRandomPackagingReply(originalSubject: string): EmailContent {
+  const body =
+    PACKAGING_REPLIES[Math.floor(Math.random() * PACKAGING_REPLIES.length)];
+  const subj = originalSubject.toLowerCase().startsWith("re:")
+    ? originalSubject
+    : `Re: ${originalSubject}`;
+  return { subject: subj, body };
+}

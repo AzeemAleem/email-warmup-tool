@@ -3,6 +3,7 @@ import Groq from "groq-sdk";
 import {
   getAllPackagingTemplates,
   getRandomPackagingTemplate,
+  getRandomPackagingReply,
   EmailContent,
 } from "./email-templates";
 
@@ -62,38 +63,10 @@ async function generateWithGroq(prompt: string): Promise<EmailContent> {
   return parseJsonResponse(text);
 }
 
-/** Generate email content — packaging templates preferred; AI optional */
+/** Generate email content — always from the packaging question pool */
 export async function generateEmailContent(
-  provider: string = "gemini"
+  _provider: string = "gemini"
 ): Promise<EmailContent> {
-  // Prefer curated packaging pool for consistency + variety
-  if (provider === "none" || Math.random() < 0.85) {
-    return getRandomPackagingTemplate();
-  }
-
-  try {
-    if (provider === "gemini") {
-      return await generateWithGemini(SYSTEM_PROMPT);
-    }
-    if (provider === "groq") {
-      return await generateWithGroq(SYSTEM_PROMPT);
-    }
-  } catch (err: unknown) {
-    const error = err as Error;
-    if (
-      provider === "gemini" &&
-      (error.message?.includes("quota") ||
-        error.message?.includes("RESOURCE_EXHAUSTED") ||
-        error.message?.includes("429"))
-    ) {
-      try {
-        return await generateWithGroq(SYSTEM_PROMPT);
-      } catch {
-        return getRandomPackagingTemplate();
-      }
-    }
-  }
-
   return getRandomPackagingTemplate();
 }
 
@@ -103,26 +76,12 @@ export async function generateReplyContent(
   provider: string = "gemini",
   _replyerName: string = ""
 ): Promise<EmailContent> {
-  const prompt = REPLY_PROMPT_TEMPLATE(originalSubject, originalBody);
-
-  const fallbacks: EmailContent[] = [
-    {
-      subject: `Re: ${originalSubject}`,
-      body: "Thanks for the note — I'll review this and get back to you shortly with an update.",
-    },
-    {
-      subject: `Re: ${originalSubject}`,
-      body: "Got it, thanks. I'll check on our side and follow up once I have a clear answer.",
-    },
-    {
-      subject: `Re: ${originalSubject}`,
-      body: "Appreciate you sending this over. Let me confirm the details and reply with next steps.",
-    },
-  ];
-
-  if (provider === "none") {
-    return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+  // Prefer curated packaging replies; AI is optional and must stay on-topic
+  if (provider === "none" || Math.random() < 0.7) {
+    return getRandomPackagingReply(originalSubject);
   }
+
+  const prompt = REPLY_PROMPT_TEMPLATE(originalSubject, originalBody);
 
   try {
     if (provider === "gemini") {
@@ -135,31 +94,22 @@ export async function generateReplyContent(
     /* fall through */
   }
 
-  return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+  return getRandomPackagingReply(originalSubject);
 }
 
-/** Seed / refresh DB template cache from packaging pool (+ optional AI) */
+/** Seed / refresh DB template cache from packaging pool only (no generic AI filler) */
 export async function generateTemplateBatch(
   count: number,
-  provider: string = "gemini"
+  _provider: string = "gemini"
 ): Promise<EmailContent[]> {
   const pool = getAllPackagingTemplates();
-  const results: EmailContent[] = [];
-
-  // Always include shuffled packaging templates first
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
-  for (const t of shuffled.slice(0, Math.min(count, shuffled.length))) {
-    results.push(t);
+  if (shuffled.length >= count) {
+    return shuffled.slice(0, count);
   }
-
+  const results = [...shuffled];
   while (results.length < count) {
-    try {
-      results.push(await generateEmailContent(provider));
-      await new Promise((r) => setTimeout(r, 300));
-    } catch {
-      results.push(getRandomPackagingTemplate());
-    }
+    results.push(getRandomPackagingTemplate());
   }
-
   return results;
 }

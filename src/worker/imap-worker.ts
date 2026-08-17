@@ -84,60 +84,97 @@ async function connectImap(account: Account): Promise<ImapFlow | null> {
   }
 }
 
-async function checkInboxForOpens(
+async function safeLogout(client: ImapFlow): Promise<void> {
+  try {
+    if (client.usable) {
+      await client.logout();
+    } else {
+      client.close();
+    }
+  } catch {
+    /* socket already dead */
+  }
+}
+
+/**
+ * Mark unseen INBOX mail from warmup-pool senders as \\Seen in Gmail.
+ * Must run even after we already replied — SMTP replies do not flip Gmail's unread flag.
+ */
+async function markUnseenWarmupSeen(
   client: ImapFlow,
   account: Account,
-  _config: { replyProbability: number; aiProvider: string }
-): Promise<void> {
+  onlyFromEmails?: string[]
+): Promise<{ marked: number; openedEventIds: string[] }> {
+  const pool = await prisma.account.findMany({
+    where: onlyFromEmails
+      ? { email: { in: onlyFromEmails } }
+      : { id: { not: account.id } },
+    select: { id: true, email: true },
+  });
+  const senderByEmail = new Map(
+    pool.map((a) => [a.email.toLowerCase(), a.id])
+  );
+
+  const pendingEvents = await prisma.warmupEvent.findMany({
+    where: {
+      receiverId: account.id,
+      status: { in: [...OPENABLE_STATUSES] },
+      repliedAt: null,
+    },
+    include: { sender: true },
+    take: 50,
+  });
+
   const lock = await client.getMailboxLock("INBOX");
-  const matchedIds: string[] = [];
+  const openedEventIds: string[] = [];
+  let marked = 0;
 
   try {
-    // Include rescued/delivered — spam rescue used to set RESCUED_FROM_SPAM
-    // which previously skipped the open/reply funnel entirely.
-    const sentEvents = await prisma.warmupEvent.findMany({
-      where: {
-        receiverId: account.id,
-        status: { in: [...OPENABLE_STATUSES] },
-        repliedAt: null,
-      },
-      include: { sender: true },
-      take: 50,
-    });
-
-    if (sentEvents.length === 0) return;
-
     for await (const msg of client.fetch(
       { seen: false },
       { uid: true, envelope: true, flags: true }
     ) as AsyncIterable<FetchMessageObject>) {
       const fromAddr = msg.envelope?.from?.[0]?.address?.toLowerCase();
       const msgId = msg.envelope?.messageId;
-
-      const matchedEvent = sentEvents.find(
-        (e) =>
-          (msgId && e.messageId === msgId) ||
-          (fromAddr && e.sender.email.toLowerCase() === fromAddr)
-      );
-
-      if (!matchedEvent) continue;
+      if (!fromAddr || !senderByEmail.has(fromAddr)) continue;
 
       await client.messageFlagsAdd({ uid: msg.uid }, ["\\Seen"]);
-      matchedIds.push(matchedEvent.id);
+      marked++;
+
+      const matchedEvent = pendingEvents.find(
+        (e) =>
+          (msgId && e.messageId === msgId) ||
+          e.sender.email.toLowerCase() === fromAddr
+      );
+      if (matchedEvent) openedEventIds.push(matchedEvent.id);
     }
   } finally {
     lock.release();
   }
 
-  // Persist OPENED immediately (no in-memory setTimeout — those die on pm2 restart).
-  // NEW→OLD replies are sent by processPendingNewReplies on the SMTP tick.
-  for (const eventId of matchedIds) {
+  return { marked, openedEventIds };
+}
+
+async function checkInboxForOpens(
+  client: ImapFlow,
+  account: Account,
+  _config: { replyProbability: number; aiProvider: string }
+): Promise<void> {
+  const { marked, openedEventIds } = await markUnseenWarmupSeen(client, account);
+
+  if (marked > 0) {
+    logger.info(
+      { email: account.email, marked },
+      "Marked unseen warmup mail as read in Gmail"
+    );
+  }
+
+  for (const eventId of openedEventIds) {
     try {
       const event = await prisma.warmupEvent.findUnique({
         where: { id: eventId },
       });
-      if (!event || event.repliedAt) continue;
-      if (event.status === "REPLIED") continue;
+      if (!event || event.repliedAt || event.status === "REPLIED") continue;
 
       await prisma.warmupEvent.update({
         where: { id: eventId },
@@ -150,6 +187,35 @@ async function checkInboxForOpens(
     } catch (err) {
       logger.error({ err, eventId }, "Failed OPENED update");
     }
+  }
+}
+
+/** Short IMAP pass so Gmail shows warmup inbound as read (SMTP replies never do this). */
+async function markAllUnseenWarmupRead(
+  account: Account,
+  onlyFromEmails?: string[]
+): Promise<void> {
+  const client = await connectImap(account);
+  if (!client) return;
+  try {
+    const { marked } = await markUnseenWarmupSeen(
+      client,
+      account,
+      onlyFromEmails
+    );
+    if (marked > 0) {
+      logger.info(
+        { email: account.email, marked, onlyFromEmails },
+        "Marked warmup inbound as read in Gmail"
+      );
+    }
+  } catch (err) {
+    logger.warn(
+      { err, email: account.email },
+      "Could not mark warmup inbound as read"
+    );
+  } finally {
+    await safeLogout(client);
   }
 }
 
@@ -274,21 +340,29 @@ export async function processPendingNewReplies(): Promise<void> {
     take: 3,
   });
 
-  if (candidates.length === 0) return;
+  if (candidates.length > 0) {
+    logger.info(
+      { count: candidates.length },
+      "Pending NEW→OLD in-thread replies"
+    );
 
-  logger.info(
-    { count: candidates.length },
-    "Pending NEW→OLD in-thread replies"
-  );
-
-  for (const event of candidates) {
-    if (replyInFlight.has(event.id)) continue;
-    replyInFlight.add(event.id);
-    try {
-      await sendReply(event, event.receiver, config.aiProvider);
-    } finally {
-      replyInFlight.delete(event.id);
+    for (const event of candidates) {
+      if (replyInFlight.has(event.id)) continue;
+      replyInFlight.add(event.id);
+      try {
+        await sendReply(event, event.receiver, config.aiProvider);
+      } finally {
+        replyInFlight.delete(event.id);
+      }
     }
+  }
+
+  // SMTP replies never flip Gmail's unread flag — mark George's inbox read here
+  const newAccounts = await prisma.account.findMany({
+    where: { status: "ACTIVE", role: "NEW" },
+  });
+  for (const account of newAccounts) {
+    await markAllUnseenWarmupRead(account);
   }
 }
 
@@ -387,16 +461,7 @@ async function pollAccount(accountId: string): Promise<void> {
     if (!client) return;
 
     try {
-      if (config.spamRescueEnabled) {
-        try {
-          await rescueSpam(client, account);
-        } catch (err) {
-          logger.warn(
-            { err, email: account.email },
-            "Spam rescue skipped (IMAP error) — still checking INBOX"
-          );
-        }
-      }
+      // INBOX first: mark warmup mail read before spam rescue can time out the socket
       try {
         await checkInboxForOpens(client, account, {
           replyProbability: config.replyProbability,
@@ -408,16 +473,18 @@ async function pollAccount(accountId: string): Promise<void> {
           "INBOX open-check failed — replies still go out via SMTP fallback"
         );
       }
-    } finally {
-      try {
-        if (client.usable) {
-          await client.logout();
-        } else {
-          client.close();
+      if (config.spamRescueEnabled) {
+        try {
+          await rescueSpam(client, account);
+        } catch (err) {
+          logger.warn(
+            { err, email: account.email },
+            "Spam rescue skipped (IMAP error)"
+          );
         }
-      } catch {
-        /* socket already dead */
       }
+    } finally {
+      await safeLogout(client);
     }
   } catch (err) {
     logger.error({ err, accountId }, "IMAP poll error");

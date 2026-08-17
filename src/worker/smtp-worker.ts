@@ -6,6 +6,7 @@ import nodemailer from "nodemailer";
 import { PrismaClient } from "@prisma/client";
 import { decrypt } from "../lib/crypto";
 import { personalizeEmailContent, resolveDisplayName } from "../lib/personalize";
+import { getRandomPackagingTemplate } from "../lib/email-templates";
 import { resolveSafetyLimits } from "../lib/safety";
 import logger from "./logger";
 import { processPendingNewReplies } from "./imap-worker";
@@ -235,9 +236,12 @@ async function processQueuedEvents(): Promise<void> {
         receiver.displayName,
         receiver.email
       );
+      // Always pick a packaging-question template at send time so stale DB
+      // "meeting notes" content never goes out.
+      const template = getRandomPackagingTemplate();
       const personalized = personalizeEmailContent(
-        event.subject,
-        event.bodyPreview,
+        template.subject,
+        template.body,
         senderName,
         receiverName
       );
