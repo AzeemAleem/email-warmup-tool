@@ -5,7 +5,7 @@
 import nodemailer from "nodemailer";
 import { PrismaClient } from "@prisma/client";
 import { decrypt } from "../lib/crypto";
-import { personalizeEmailContent, resolveDisplayName } from "../lib/personalize";
+import { personalizeEmailContent, resolveDisplayName, voiceForRole } from "../lib/personalize";
 import { getRandomPackagingTemplate } from "../lib/email-templates";
 import { resolveSafetyLimits } from "../lib/safety";
 import logger from "./logger";
@@ -243,7 +243,8 @@ async function processQueuedEvents(): Promise<void> {
         template.subject,
         template.body,
         senderName,
-        receiverName
+        receiverName,
+        voiceForRole(sender.role)
       );
 
       await transporter.sendMail({

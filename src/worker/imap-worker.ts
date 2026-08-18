@@ -97,8 +97,62 @@ async function safeLogout(client: ImapFlow): Promise<void> {
 }
 
 /**
+ * Mark unread INBOX mail from a specific sender as \\Seen (Gmail web UI).
+ * Uses IMAP SEARCH by FROM — more reliable than scanning all unseen mail.
+ */
+async function markInboundFromSenderRead(
+  account: Account,
+  fromEmail: string
+): Promise<number> {
+  const client = await connectImap(account);
+  if (!client) return 0;
+
+  let marked = 0;
+  try {
+    const lock = await client.getMailboxLock("INBOX");
+    try {
+      const uids = await client.search(
+        { seen: false, from: fromEmail },
+        { uid: true }
+      );
+      if (!uids || !Array.isArray(uids) || uids.length === 0) {
+        return 0;
+      }
+
+      for (const uid of uids) {
+        try {
+          await client.messageFlagsAdd({ uid }, ["\\Seen"]);
+          marked++;
+        } catch (err) {
+          logger.warn(
+            { err, email: account.email, from: fromEmail, uid },
+            "Failed to mark single message read"
+          );
+        }
+      }
+    } finally {
+      lock.release();
+    }
+  } catch (err) {
+    logger.warn(
+      { err, email: account.email, from: fromEmail },
+      "IMAP search/mark read failed"
+    );
+  } finally {
+    await safeLogout(client);
+  }
+
+  if (marked > 0) {
+    logger.info(
+      { email: account.email, from: fromEmail, marked },
+      "Marked inbound mail as read in Gmail"
+    );
+  }
+  return marked;
+}
+
+/**
  * Mark unseen INBOX mail from warmup-pool senders as \\Seen in Gmail.
- * Must run even after we already replied — SMTP replies do not flip Gmail's unread flag.
  */
 async function markUnseenWarmupSeen(
   client: ImapFlow,
@@ -106,47 +160,39 @@ async function markUnseenWarmupSeen(
   onlyFromEmails?: string[]
 ): Promise<{ marked: number; openedEventIds: string[] }> {
   const pool = await prisma.account.findMany({
-    where: onlyFromEmails
+    where: onlyFromEmails?.length
       ? { email: { in: onlyFromEmails } }
-      : { id: { not: account.id } },
+      : { id: { not: account.id }, role: "OLD" },
     select: { id: true, email: true },
   });
-  const senderByEmail = new Map(
-    pool.map((a) => [a.email.toLowerCase(), a.id])
-  );
 
-  const pendingEvents = await prisma.warmupEvent.findMany({
-    where: {
-      receiverId: account.id,
-      status: { in: [...OPENABLE_STATUSES] },
-      repliedAt: null,
-    },
-    include: { sender: true },
-    take: 50,
-  });
-
-  const lock = await client.getMailboxLock("INBOX");
   const openedEventIds: string[] = [];
   let marked = 0;
 
+  const lock = await client.getMailboxLock("INBOX");
   try {
-    for await (const msg of client.fetch(
-      { seen: false },
-      { uid: true, envelope: true, flags: true }
-    ) as AsyncIterable<FetchMessageObject>) {
-      const fromAddr = msg.envelope?.from?.[0]?.address?.toLowerCase();
-      const msgId = msg.envelope?.messageId;
-      if (!fromAddr || !senderByEmail.has(fromAddr)) continue;
-
-      await client.messageFlagsAdd({ uid: msg.uid }, ["\\Seen"]);
-      marked++;
-
-      const matchedEvent = pendingEvents.find(
-        (e) =>
-          (msgId && e.messageId === msgId) ||
-          e.sender.email.toLowerCase() === fromAddr
+    for (const sender of pool) {
+      const fromEmail = sender.email;
+      const uids = await client.search(
+        { seen: false, from: fromEmail },
+        { uid: true }
       );
-      if (matchedEvent) openedEventIds.push(matchedEvent.id);
+      if (!uids || !Array.isArray(uids) || uids.length === 0) continue;
+
+      for (const uid of uids) {
+        await client.messageFlagsAdd({ uid }, ["\\Seen"]);
+        marked++;
+      }
+
+      const recentEvent = await prisma.warmupEvent.findFirst({
+        where: {
+          receiverId: account.id,
+          senderId: sender.id,
+          status: { in: ["SENT", "DELIVERED", "OPENED"] },
+        },
+        orderBy: { sentAt: "desc" },
+      });
+      if (recentEvent) openedEventIds.push(recentEvent.id);
     }
   } finally {
     lock.release();
@@ -231,6 +277,26 @@ async function sendReply(
     });
     if (!latest || latest.repliedAt || latest.status === "REPLIED") return;
 
+    // Read first (like a human), then reply — SMTP alone never clears Gmail unread
+    const markedRead = await markInboundFromSenderRead(
+      replierAccount,
+      originalEvent.sender.email
+    );
+    if (markedRead === 0) {
+      logger.warn(
+        {
+          replier: replierAccount.email,
+          from: originalEvent.sender.email,
+        },
+        "No unread message found to mark read before reply — will retry after send"
+      );
+    } else {
+      await prisma.warmupEvent.update({
+        where: { id: originalEvent.id },
+        data: { status: "OPENED", openedAt: new Date() },
+      });
+    }
+
     const replyerName = resolveDisplayName(
       replierAccount.displayName,
       replierAccount.email
@@ -251,7 +317,8 @@ async function sendReply(
       replyContent.subject,
       replyContent.body,
       replyerName,
-      originalSenderName
+      originalSenderName,
+      replierAccount.role
     );
 
     const appPassword = decrypt(replierAccount.appPassword);
@@ -300,9 +367,18 @@ async function sendReply(
         originalEventId: originalEvent.id,
         replyFrom: replierAccount.email,
         replyTo: originalEvent.sender.email,
+        markedReadBeforeReply: markedRead,
       },
       "NEW account in-thread reply sent to OLD"
     );
+
+    // Backup: mark read again after reply (Gmail thread can stay bold otherwise)
+    if (markedRead === 0) {
+      await markInboundFromSenderRead(
+        replierAccount,
+        originalEvent.sender.email
+      );
+    }
   } catch (err) {
     logger.error({ err, originalEventId: originalEvent.id }, "Failed to send reply");
   }
@@ -357,12 +433,35 @@ export async function processPendingNewReplies(): Promise<void> {
     }
   }
 
-  // SMTP replies never flip Gmail's unread flag — mark George's inbox read here
+  // NEW inboxes: mark any remaining unread from OLD client accounts
   const newAccounts = await prisma.account.findMany({
     where: { status: "ACTIVE", role: "NEW" },
+    include: {
+      receivedEvents: {
+        where: {
+          status: { in: ["SENT", "OPENED", "REPLIED"] },
+          sender: { role: "OLD" },
+          sentAt: { gte: since },
+        },
+        include: { sender: true },
+        take: 20,
+      },
+    },
   });
+
   for (const account of newAccounts) {
-    await markAllUnseenWarmupRead(account);
+    const senderEmails = [
+      ...new Set(
+        account.receivedEvents.map((e) => e.sender.email.toLowerCase())
+      ),
+    ];
+    if (senderEmails.length === 0) {
+      await markAllUnseenWarmupRead(account);
+      continue;
+    }
+    for (const from of senderEmails) {
+      await markInboundFromSenderRead(account, from);
+    }
   }
 }
 

@@ -7,7 +7,7 @@ import { buildDailyPlan, computeTrustWeight, computeDailyTargetVolume } from "..
 import { capOldVolumeForNewPool, resolveSafetyLimits } from "../lib/safety";
 import { getAllPackagingTemplates } from "../lib/email-templates";
 import { generateTemplateBatch } from "../lib/ai-content";
-import { personalizeEmailContent, resolveDisplayName } from "../lib/personalize";
+import { personalizeEmailContent, resolveDisplayName, voiceForRole } from "../lib/personalize";
 import logger from "./logger";
 
 const prisma = new PrismaClient();
@@ -236,7 +236,8 @@ export async function runDailyPlanner(): Promise<void> {
         template.subject,
         template.body,
         senderName,
-        receiverName
+        receiverName,
+        voiceForRole(sender?.role || "OLD")
       );
       return {
         senderId: slot.senderId,
