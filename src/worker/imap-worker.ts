@@ -450,9 +450,15 @@ export async function processPendingNewReplies(): Promise<void> {
   });
 
   for (const account of newAccounts) {
-    const senderEmails = Array.from(
-      new Set(account.receivedEvents.map((e) => e.sender.email.toLowerCase()))
-    );
+    const seen = new Set<string>();
+    const senderEmails: string[] = [];
+    for (const e of account.receivedEvents) {
+      const addr = e.sender.email.toLowerCase();
+      if (!seen.has(addr)) {
+        seen.add(addr);
+        senderEmails.push(addr);
+      }
+    }
     if (senderEmails.length === 0) {
       await markAllUnseenWarmupRead(account);
       continue;
