@@ -111,12 +111,13 @@ export async function runDailyPlanner(): Promise<void> {
       recentPairsMap[evt.senderId].add(`${evt.senderId}:${evt.receiverId}`);
     }
 
-    // Inbound already used today per receiver (so flood days do not schedule more)
+    // Inbound already used today — only fresh (non-reply) mail counts toward caps
     const inboundRows = await prisma.warmupEvent.groupBy({
       by: ["receiverId"],
       where: {
         scheduledFor: { gte: today },
         status: { in: [...EXCHANGE_STATUSES] },
+        isReply: false,
       },
       _count: { _all: true },
     });

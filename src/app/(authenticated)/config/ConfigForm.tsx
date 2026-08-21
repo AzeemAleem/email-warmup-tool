@@ -346,8 +346,10 @@ export function ConfigForm({ config }: ConfigFormProps) {
               className={inputClass}
             />
             <p className={hintClass}>
-              Chance an OLD inbox replies after opening. NEW accounts (e.g.
-              George) always reply in-thread to OLD warmup mail.
+              Used for optional AI variance. Each warmup thread always runs 4
+              messages: OLD→NEW, NEW reply, OLD follow-up (not counted toward
+              inbound caps), then NEW closing thanks. Both sides mark mail as
+              read before replying.
             </p>
           </div>
           <div>

@@ -48,12 +48,20 @@ model WarmupEvent {
   repliedAt     DateTime?
   landedInSpam  Boolean  @default(false)
   rescuedAt     DateTime?
+  /// Root event id for the conversation (null on fresh OLD→NEW mail)
+  threadRootId  String?
+  /// 0 = fresh mail, 1 = NEW reply, 2 = OLD follow-up, 3 = NEW closing (max)
+  threadDepth   Int      @default(0)
+  /// True for in-thread replies — does NOT count toward inbound daily caps
+  isReply       Boolean  @default(false)
   createdAt     DateTime @default(now())
 
   @@index([status, scheduledFor])
   @@index([senderId])
   @@index([receiverId])
   @@index([messageId])
+  @@index([threadRootId])
+  @@index([isReply, status, sentAt])
 }
 
 model WarmupConfig {

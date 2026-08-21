@@ -56,11 +56,13 @@ async function countInbound(
   receiverId: string,
   since: Date
 ): Promise<number> {
+  // Only fresh (non-reply) inbound counts toward the daily/hourly cap
   return prisma.warmupEvent.count({
     where: {
       receiverId,
       status: "SENT",
       sentAt: { gte: since },
+      isReply: false,
     },
   });
 }

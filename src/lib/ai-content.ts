@@ -3,7 +3,9 @@ import Groq from "groq-sdk";
 import {
   getAllPackagingTemplates,
   getRandomPackagingTemplate,
-  getRandomPackagingReply,
+  getThreadReplyContent,
+  replyPhaseForDepth,
+  MAX_THREAD_DEPTH,
   EmailContent,
 } from "./email-templates";
 
@@ -74,11 +76,17 @@ export async function generateReplyContent(
   originalSubject: string,
   originalBody: string,
   provider: string = "gemini",
-  _replyerName: string = ""
+  _replyerName: string = "",
+  threadDepth: number = 0
 ): Promise<EmailContent> {
-  // Prefer curated packaging replies; AI is optional and must stay on-topic
-  if (provider === "none" || Math.random() < 0.7) {
-    return getRandomPackagingReply(originalSubject);
+  const phase = replyPhaseForDepth(threadDepth);
+  if (!phase) {
+    return getThreadReplyContent(originalSubject, "new_closing");
+  }
+
+  // Prefer curated thread-phase replies; AI optional on first NEW reply only
+  if (provider === "none" || phase !== "new_vendor" || Math.random() < 0.7) {
+    return getThreadReplyContent(originalSubject, phase);
   }
 
   const prompt = REPLY_PROMPT_TEMPLATE(originalSubject, originalBody);
@@ -94,7 +102,7 @@ export async function generateReplyContent(
     /* fall through */
   }
 
-  return getRandomPackagingReply(originalSubject);
+  return getThreadReplyContent(originalSubject, phase);
 }
 
 /** Seed / refresh DB template cache from packaging pool only (no generic AI filler) */

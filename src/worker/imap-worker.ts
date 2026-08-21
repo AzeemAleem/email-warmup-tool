@@ -8,6 +8,7 @@ import { PrismaClient, Account } from "@prisma/client";
 import { decrypt } from "../lib/crypto";
 import { generateReplyContent } from "../lib/ai-content";
 import { personalizeReplyContent, resolveDisplayName } from "../lib/personalize";
+import { MAX_THREAD_DEPTH, replyPhaseForDepth } from "../lib/email-templates";
 import logger from "./logger";
 import nodemailer from "nodemailer";
 
@@ -266,14 +267,40 @@ async function markAllUnseenWarmupRead(
 }
 
 async function sendReply(
-  originalEvent: { id: string; subject: string; bodyPreview: string; messageId: string | null; sender: Account },
+  originalEvent: {
+    id: string;
+    subject: string;
+    bodyPreview: string;
+    messageId: string | null;
+    threadRootId: string | null;
+    threadDepth: number;
+    sender: Account;
+  },
   replierAccount: Account,
   aiProvider: string
 ): Promise<void> {
   try {
+    const phase = replyPhaseForDepth(originalEvent.threadDepth);
+    if (!phase) {
+      logger.info(
+        { eventId: originalEvent.id, depth: originalEvent.threadDepth },
+        "Thread complete — no further reply"
+      );
+      return;
+    }
+
+    // Role guard: NEW replies on even depths (0,2); OLD replies on odd depth (1)
+    if (phase === "old_followup" && replierAccount.role !== "OLD") return;
+    if (
+      (phase === "new_vendor" || phase === "new_closing") &&
+      replierAccount.role !== "NEW"
+    ) {
+      return;
+    }
+
     const latest = await prisma.warmupEvent.findUnique({
       where: { id: originalEvent.id },
-      select: { status: true, repliedAt: true },
+      select: { status: true, repliedAt: true, threadDepth: true },
     });
     if (!latest || latest.repliedAt || latest.status === "REPLIED") return;
 
@@ -310,7 +337,8 @@ async function sendReply(
       originalEvent.subject,
       originalEvent.bodyPreview,
       aiProvider,
-      replyerName
+      replyerName,
+      originalEvent.threadDepth
     );
 
     const personalized = personalizeReplyContent(
@@ -333,6 +361,8 @@ async function sendReply(
     });
 
     const messageId = `<reply-${originalEvent.id}-${Date.now()}@warmup.local>`;
+    const nextDepth = originalEvent.threadDepth + 1;
+    const threadRootId = originalEvent.threadRootId ?? originalEvent.id;
 
     await transporter.sendMail({
       from: `"${replyerName}" <${replierAccount.email}>`,
@@ -359,6 +389,9 @@ async function sendReply(
         status: "SENT",
         scheduledFor: new Date(),
         sentAt: new Date(),
+        threadRootId,
+        threadDepth: nextDepth,
+        isReply: true,
       },
     });
 
@@ -367,9 +400,11 @@ async function sendReply(
         originalEventId: originalEvent.id,
         replyFrom: replierAccount.email,
         replyTo: originalEvent.sender.email,
+        phase,
+        threadDepth: nextDepth,
         markedReadBeforeReply: markedRead,
       },
-      "NEW account in-thread reply sent to OLD"
+      "In-thread reply sent"
     );
 
     // Backup: mark read again after reply (Gmail thread can stay bold otherwise)
@@ -385,9 +420,12 @@ async function sendReply(
 }
 
 /**
- * NEW accounts always reply in-thread to OLD warmup mail.
- * Does not depend on IMAP succeeding — SMTP is enough so George still
- * replies when Gmail IMAP times out on Contabo.
+ * Drive a 4-message thread:
+ *   0 OLD→NEW (fresh, counted toward cap)
+ *   1 NEW→OLD (reply)
+ *   2 OLD→NEW (follow-up reply, not counted)
+ *   3 NEW→OLD (closing thanks, not counted)
+ * Then stop. In-thread replies never count toward inbound caps.
  */
 export async function processPendingNewReplies(): Promise<void> {
   const config = await prisma.warmupConfig.findUnique({
@@ -400,32 +438,54 @@ export async function processPendingNewReplies(): Promise<void> {
   const sentReady = new Date(now - 12 * 60 * 1000);
   const since = new Date(now - 24 * 60 * 60 * 1000);
 
+  // Any openable event below max depth can receive the next in-thread reply
   const candidates = await prisma.warmupEvent.findMany({
     where: {
-      repliedAt: null,
-      status: { in: [...OPENABLE_STATUSES] },
-      receiver: { role: "NEW", status: "ACTIVE" },
-      sender: { role: "OLD", status: "ACTIVE" },
-      OR: [
-        { openedAt: { lte: openedReady, gte: since } },
-        { sentAt: { lte: sentReady, gte: since } },
+      AND: [
+        {
+          repliedAt: null,
+          status: { in: [...OPENABLE_STATUSES] },
+          threadDepth: { lt: MAX_THREAD_DEPTH },
+        },
+        {
+          OR: [
+            { openedAt: { lte: openedReady, gte: since } },
+            { sentAt: { lte: sentReady, gte: since } },
+          ],
+        },
+        {
+          // Depth 0/2 (OLD→NEW): NEW replies. Depth 1 (NEW→OLD): OLD replies.
+          OR: [
+            {
+              threadDepth: { in: [0, 2] },
+              sender: { role: "OLD", status: "ACTIVE" },
+              receiver: { role: "NEW", status: "ACTIVE" },
+            },
+            {
+              threadDepth: 1,
+              sender: { role: "NEW", status: "ACTIVE" },
+              receiver: { role: "OLD", status: "ACTIVE" },
+            },
+          ],
+        },
       ],
     },
     include: { sender: true, receiver: true },
     orderBy: { sentAt: "asc" },
-    take: 3,
+    take: 5,
   });
 
   if (candidates.length > 0) {
     logger.info(
       { count: candidates.length },
-      "Pending NEW→OLD in-thread replies"
+      "Pending in-thread replies (multi-message warmup)"
     );
 
     for (const event of candidates) {
       if (replyInFlight.has(event.id)) continue;
       replyInFlight.add(event.id);
       try {
+        // Replier is always the receiver of the message being answered
         await sendReply(event, event.receiver, config.aiProvider);
       } finally {
         replyInFlight.delete(event.id);
@@ -433,14 +493,13 @@ export async function processPendingNewReplies(): Promise<void> {
     }
   }
 
-  // NEW inboxes: mark any remaining unread from OLD client accounts
-  const newAccounts = await prisma.account.findMany({
-    where: { status: "ACTIVE", role: "NEW" },
+  // Mark unread warmup mail as read on BOTH NEW and OLD inboxes
+  const activeAccounts = await prisma.account.findMany({
+    where: { status: "ACTIVE" },
     include: {
       receivedEvents: {
         where: {
           status: { in: ["SENT", "OPENED", "REPLIED"] },
-          sender: { role: "OLD" },
           sentAt: { gte: since },
         },
         include: { sender: true },
@@ -449,7 +508,7 @@ export async function processPendingNewReplies(): Promise<void> {
     },
   });
 
-  for (const account of newAccounts) {
+  for (const account of activeAccounts) {
     const seen = new Set<string>();
     const senderEmails: string[] = [];
     for (const e of account.receivedEvents) {
@@ -459,10 +518,7 @@ export async function processPendingNewReplies(): Promise<void> {
         senderEmails.push(addr);
       }
     }
-    if (senderEmails.length === 0) {
-      await markAllUnseenWarmupRead(account);
-      continue;
-    }
+    if (senderEmails.length === 0) continue;
     for (const from of senderEmails) {
       await markInboundFromSenderRead(account, from);
     }

@@ -309,8 +309,17 @@ export function getAllPackagingTemplates(): EmailContent[] {
   return [...PACKAGING_TEMPLATES];
 }
 
-/** Short in-thread replies that stay on the packaging topic */
-const PACKAGING_REPLIES: string[] = [
+/** Thread depth: 0 fresh → 1 NEW reply → 2 OLD follow-up → 3 NEW closing (stop) */
+export const MAX_THREAD_DEPTH = 3;
+
+function withReSubject(originalSubject: string): string {
+  return originalSubject.toLowerCase().startsWith("re:")
+    ? originalSubject
+    : `Re: ${originalSubject}`;
+}
+
+/** NEW (vendor) first reply to an OLD client inquiry */
+const NEW_VENDOR_REPLIES: string[] = [
   "Good question — I'll check with production and send you a clear answer on options and lead time.",
   "We can help with that. Let me confirm the specs and follow up with the best approach.",
   "Thanks for sending this over. I'll review it on our side and get back with a recommendation.",
@@ -321,11 +330,53 @@ const PACKAGING_REPLIES: string[] = [
   "Thanks for the update. I'll confirm with the team and follow up on this thread.",
 ];
 
+/** OLD (client) follow-up on the same thread after NEW replies */
+const OLD_CLIENT_FOLLOWUPS: string[] = [
+  "Thanks for the quick reply. Could you also share a rough price range and lead time for that option?",
+  "Appreciate the update. One more thing — do you have a sample or mockup we could review before ordering?",
+  "That helps, thanks. Would a slightly higher quantity change the unit price or turnaround?",
+  "Got it. Can you confirm whether custom printing is included, or if that's quoted separately?",
+  "Thanks. Just to double-check — what's the usual MOQ for this style, and how long for a first run?",
+  "Helpful, thank you. Could you also note any material alternatives if we need a more premium finish?",
+  "Sounds good. If we lock this in this week, when could you ship a first batch?",
+  "Thanks for clarifying. Could you send a short cost breakdown so we can compare with our other option?",
+];
+
+/** NEW (vendor) closing / thanks — ends the thread */
+const NEW_CLOSING_REPLIES: string[] = [
+  "Happy to help — we'll keep this thread open if you need anything else on the packaging.",
+  "You're welcome. Once you're ready to move forward, just reply here and we'll take it from there.",
+  "Glad that helped. Feel free to reach out anytime with sizing or artwork questions.",
+  "Thanks for the follow-up. We'll be ready when you are — just send the final specs on this thread.",
+  "Appreciate your questions. Looking forward to working with you when you're ready to order.",
+  "Of course — thanks for checking in. Wishing you a great day, and we're here if anything else comes up.",
+];
+
+export type ThreadReplyPhase = "new_vendor" | "old_followup" | "new_closing";
+
+/** Map the depth of the message being replied TO → next reply phase */
+export function replyPhaseForDepth(currentDepth: number): ThreadReplyPhase | null {
+  if (currentDepth === 0) return "new_vendor"; // NEW replies to fresh OLD mail
+  if (currentDepth === 1) return "old_followup"; // OLD follows up on NEW reply
+  if (currentDepth === 2) return "new_closing"; // NEW closes the thread
+  return null; // depth 3+ — conversation complete
+}
+
+export function getThreadReplyContent(
+  originalSubject: string,
+  phase: ThreadReplyPhase
+): EmailContent {
+  const pool =
+    phase === "new_vendor"
+      ? NEW_VENDOR_REPLIES
+      : phase === "old_followup"
+        ? OLD_CLIENT_FOLLOWUPS
+        : NEW_CLOSING_REPLIES;
+  const body = pool[Math.floor(Math.random() * pool.length)];
+  return { subject: withReSubject(originalSubject), body };
+}
+
+/** @deprecated use getThreadReplyContent — kept for older imports */
 export function getRandomPackagingReply(originalSubject: string): EmailContent {
-  const body =
-    PACKAGING_REPLIES[Math.floor(Math.random() * PACKAGING_REPLIES.length)];
-  const subj = originalSubject.toLowerCase().startsWith("re:")
-    ? originalSubject
-    : `Re: ${originalSubject}`;
-  return { subject: subj, body };
+  return getThreadReplyContent(originalSubject, "new_vendor");
 }
