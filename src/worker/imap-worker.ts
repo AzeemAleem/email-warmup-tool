@@ -333,12 +333,26 @@ async function sendReply(
       originalEvent.sender.email
     );
 
+    const threadRootId = originalEvent.threadRootId ?? originalEvent.id;
+    const rootEvent =
+      threadRootId === originalEvent.id
+        ? { subject: originalEvent.subject, bodyPreview: originalEvent.bodyPreview }
+        : await prisma.warmupEvent.findUnique({
+            where: { id: threadRootId },
+            select: { subject: true, bodyPreview: true },
+          });
+
+    const threadRoot = rootEvent
+      ? { subject: rootEvent.subject, body: rootEvent.bodyPreview }
+      : undefined;
+
     const replyContent = await generateReplyContent(
       originalEvent.subject,
       originalEvent.bodyPreview,
       aiProvider,
       replyerName,
-      originalEvent.threadDepth
+      originalEvent.threadDepth,
+      threadRoot
     );
 
     const personalized = personalizeReplyContent(
@@ -362,7 +376,6 @@ async function sendReply(
 
     const messageId = `<reply-${originalEvent.id}-${Date.now()}@warmup.local>`;
     const nextDepth = originalEvent.threadDepth + 1;
-    const threadRootId = originalEvent.threadRootId ?? originalEvent.id;
 
     await transporter.sendMail({
       from: `"${replyerName}" <${replierAccount.email}>`,

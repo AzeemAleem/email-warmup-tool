@@ -3,11 +3,14 @@ import Groq from "groq-sdk";
 import {
   getAllPackagingTemplates,
   getRandomPackagingTemplate,
-  getThreadReplyContent,
   replyPhaseForDepth,
-  MAX_THREAD_DEPTH,
   EmailContent,
 } from "./email-templates";
+import {
+  buildContextualThreadReply,
+  buildThreadReplyPrompt,
+  ThreadContext,
+} from "./thread-replies";
 
 export type { EmailContent };
 
@@ -19,19 +22,7 @@ Keep under 80 words for the BODY ONLY — do NOT include greeting or signature.
 Do NOT invent real person names in the body.
 Return JSON only: {"subject": "...", "body": "..."}`;
 
-const REPLY_PROMPT_TEMPLATE = (
-  originalSubject: string,
-  originalBody: string
-) => `
-Write a short natural reply to this packaging-business email.
-Acknowledge something specific, keep under 60 words for BODY ONLY.
-No greeting or signature lines — those are added separately.
-Return JSON: {"subject": "Re: ${originalSubject}", "body": "..."}
-
-Original:
-Subject: ${originalSubject}
-Body: ${originalBody}
-`;
+export type { ThreadContext };
 
 function parseJsonResponse(text: string): EmailContent {
   const jsonMatch = text.match(/\{[\s\S]*"subject"[\s\S]*"body"[\s\S]*\}/);
@@ -77,32 +68,43 @@ export async function generateReplyContent(
   originalBody: string,
   provider: string = "gemini",
   _replyerName: string = "",
-  threadDepth: number = 0
+  threadDepth: number = 0,
+  threadRoot?: { subject: string; body: string }
 ): Promise<EmailContent> {
   const phase = replyPhaseForDepth(threadDepth);
   if (!phase) {
-    return getThreadReplyContent(originalSubject, "new_closing");
+    const ctx: ThreadContext = {
+      rootSubject: threadRoot?.subject ?? originalSubject,
+      rootBody: threadRoot?.body ?? originalBody,
+      immediateSubject: originalSubject,
+      immediateBody: originalBody,
+    };
+    return buildContextualThreadReply(ctx, "new_closing");
   }
 
-  // Prefer curated thread-phase replies; AI optional on first NEW reply only
-  if (provider === "none" || phase !== "new_vendor" || Math.random() < 0.7) {
-    return getThreadReplyContent(originalSubject, phase);
-  }
+  const ctx: ThreadContext = {
+    rootSubject: threadRoot?.subject ?? originalSubject,
+    rootBody: threadRoot?.body ?? originalBody,
+    immediateSubject: originalSubject,
+    immediateBody: originalBody,
+  };
 
-  const prompt = REPLY_PROMPT_TEMPLATE(originalSubject, originalBody);
-
-  try {
-    if (provider === "gemini") {
-      return await generateWithGemini(prompt);
+  // Try AI first when configured — keeps replies on the thread topic
+  if (provider !== "none") {
+    const prompt = buildThreadReplyPrompt(ctx, phase);
+    try {
+      if (provider === "gemini") {
+        return await generateWithGemini(prompt);
+      }
+      if (provider === "groq") {
+        return await generateWithGroq(prompt);
+      }
+    } catch {
+      /* fall through to contextual templates */
     }
-    if (provider === "groq") {
-      return await generateWithGroq(prompt);
-    }
-  } catch {
-    /* fall through */
   }
 
-  return getThreadReplyContent(originalSubject, phase);
+  return buildContextualThreadReply(ctx, phase);
 }
 
 /** Seed / refresh DB template cache from packaging pool only (no generic AI filler) */
