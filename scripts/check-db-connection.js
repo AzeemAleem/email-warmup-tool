@@ -71,6 +71,9 @@ async function main() {
       console.error(
         "❌ Connected but schema is incomplete — run: npx prisma migrate deploy"
       );
+      console.error(
+        "   If migrate fails on db.*.supabase.co, set DIRECT_URL to the same Session pooler as DATABASE_URL."
+      );
       process.exit(1);
     }
     console.log("✅ Database connected and schema looks OK");
