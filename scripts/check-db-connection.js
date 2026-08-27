@@ -11,6 +11,45 @@ async function main() {
   const host = hostMatch ? hostMatch[1] : "(unknown)";
 
   console.log("DATABASE_URL host:", host);
+
+  if (host.includes("REGION") || host.includes("PROJECT_REF")) {
+    console.error(
+      "\n❌ DATABASE_URL still contains placeholders (REGION / PROJECT_REF)."
+    );
+    console.error(
+      "   Copy the real URI from Supabase → Connect → Session pooler → URI\n"
+    );
+    process.exit(1);
+  }
+
+  if (
+    host.endsWith(".pooler.supabase.com") &&
+    !host.startsWith("aws-0-") &&
+    !host.startsWith("aws-")
+  ) {
+    console.error(
+      "\n❌ Pooler host looks wrong:", host
+    );
+    console.error(
+      "   Expected format: aws-0-REGION.pooler.supabase.com (e.g. aws-0-ap-southeast-2.pooler.supabase.com)"
+    );
+    console.error(
+      "   Do not guess the region — copy Session pooler URI from Supabase Connect modal.\n"
+    );
+    process.exit(1);
+  }
+
+  const userMatch = url.match(/postgresql:\/\/([^:@]+)/);
+  const dbUser = userMatch ? userMatch[1] : "";
+  if (host.endsWith(".pooler.supabase.com") && dbUser === "postgres") {
+    console.warn(
+      "\n⚠  Pooler URL uses user 'postgres' — Supabase usually requires postgres.PROJECT_REF"
+    );
+    console.warn(
+      "   Example: postgres.lpzznckbchjzbhuapnng\n"
+    );
+  }
+
   if (host.startsWith("db.") && host.endsWith(".supabase.co")) {
     console.warn(
       "\n⚠  Direct Supabase host (db.*.supabase.co) is IPv6-only and often fails from VPS/serverless."
