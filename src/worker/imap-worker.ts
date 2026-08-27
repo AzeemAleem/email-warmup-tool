@@ -4,15 +4,15 @@
  * - Checks [Gmail]/Spam → rescues warmup mail (moves to Inbox, marks not-spam)
  */
 import { ImapFlow, FetchMessageObject } from "imapflow";
-import { PrismaClient, Account } from "@prisma/client";
+import { Account } from "@prisma/client";
 import { decrypt } from "../lib/crypto";
 import { generateReplyContent } from "../lib/ai-content";
 import { personalizeReplyContent, resolveDisplayName } from "../lib/personalize";
 import { MAX_THREAD_DEPTH, replyPhaseForDepth } from "../lib/email-templates";
 import logger from "./logger";
 import nodemailer from "nodemailer";
+import prisma from "./prisma";
 
-const prisma = new PrismaClient();
 const IMAP_INTERVAL_MS = 7 * 60 * 1000;
 
 export type IntervalWorkerHandle = {

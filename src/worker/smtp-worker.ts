@@ -3,15 +3,13 @@
  * Queries QUEUED events due for sending, sends via nodemailer.
  */
 import nodemailer from "nodemailer";
-import { PrismaClient } from "@prisma/client";
 import { decrypt } from "../lib/crypto";
 import { personalizeEmailContent, resolveDisplayName, voiceForRole } from "../lib/personalize";
 import { getRandomPackagingTemplate } from "../lib/email-templates";
 import { resolveSafetyLimits } from "../lib/safety";
 import logger from "./logger";
 import { processPendingNewReplies } from "./imap-worker";
-
-const prisma = new PrismaClient();
+import prisma from "./prisma";
 
 const SMTP_INTERVAL_MS = 5 * 60 * 1000;
 

@@ -31,8 +31,7 @@ async function main() {
   // If starting during business hours and no events exist for today, run planner
   if (hour >= 6 && hour <= 22) {
     try {
-      const { PrismaClient } = await import("@prisma/client");
-      const prisma = new PrismaClient();
+      const prisma = (await import("./prisma")).default;
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       const todayEnd = new Date();

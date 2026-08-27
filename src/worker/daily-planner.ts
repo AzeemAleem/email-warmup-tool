@@ -2,15 +2,13 @@
  * Daily plan generator: runs at midnight via node-cron.
  * Computes trust weights, volumes, and creates WarmupEvent rows.
  */
-import { PrismaClient } from "@prisma/client";
 import { buildDailyPlan, computeTrustWeight, computeDailyTargetVolume } from "../lib/warmup-strategy";
 import { capOldVolumeForNewPool, resolveSafetyLimits } from "../lib/safety";
 import { getAllPackagingTemplates } from "../lib/email-templates";
 import { generateTemplateBatch } from "../lib/ai-content";
 import { personalizeEmailContent, resolveDisplayName, voiceForRole } from "../lib/personalize";
 import logger from "./logger";
-
-const prisma = new PrismaClient();
+import prisma from "./prisma";
 
 /** Statuses that count as a real (or pending) exchange for cooldown / inbound caps */
 const EXCHANGE_STATUSES = [
