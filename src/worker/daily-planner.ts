@@ -130,6 +130,24 @@ export async function runDailyPlanner(): Promise<void> {
       );
     }
 
+    // Pair rotation: how often each OLD→NEW pair was used in the last 7 days
+    const pairLookback = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const pairHistory = await prisma.warmupEvent.findMany({
+      where: {
+        scheduledFor: { gte: pairLookback },
+        isReply: false,
+        status: { in: [...EXCHANGE_STATUSES] },
+        sender: { role: "OLD" },
+        receiver: { role: "NEW" },
+      },
+      select: { senderId: true, receiverId: true },
+    });
+    const pairUsage: Record<string, number> = {};
+    for (const evt of pairHistory) {
+      const key = `${evt.senderId}:${evt.receiverId}`;
+      pairUsage[key] = (pairUsage[key] ?? 0) + 1;
+    }
+
     // Always refresh from the packaging question pool (ignore stale DB "meeting" templates)
     logger.info("Refreshing packaging content templates...");
     await prisma.contentTemplate.deleteMany({});
@@ -180,7 +198,8 @@ export async function runDailyPlanner(): Promise<void> {
       today,
       (senderId) => recentPairsMap[senderId] || new Set(),
       Math.random,
-      inboundAlreadyToday
+      inboundAlreadyToday,
+      pairUsage
     );
 
     // Persist volumes that reflect what was actually scheduled
@@ -199,9 +218,21 @@ export async function runDailyPlanner(): Promise<void> {
       });
     }
 
+    const accountById = new Map(accounts.map((a) => [a.id, a]));
+
     logger.info(
       `Daily plan: ${plan.slots.length} send slots across ${accounts.length} accounts`
     );
+    const pairSummary: Record<string, number> = {};
+    for (const slot of plan.slots) {
+      const from = accountById.get(slot.senderId)?.email ?? slot.senderId;
+      const to = accountById.get(slot.receiverId)?.email ?? slot.receiverId;
+      const key = `${from} → ${to}`;
+      pairSummary[key] = (pairSummary[key] ?? 0) + 1;
+    }
+    if (plan.slots.length > 0) {
+      logger.info({ pairSummary, pairUsage }, "Pairing rotation for today's plan");
+    }
     if (plan.slots.length === 0 && oldCount > 0 && newCount > 0) {
       logger.warn(
         {
@@ -218,7 +249,6 @@ export async function runDailyPlanner(): Promise<void> {
     }
 
     // Write WarmupEvent rows for each slot (personalized with real names)
-    const accountById = new Map(accounts.map((a) => [a.id, a]));
     const eventsToCreate = plan.slots.map((slot, i) => {
       const template = packagingPool[i % packagingPool.length];
       const sender = accountById.get(slot.senderId);

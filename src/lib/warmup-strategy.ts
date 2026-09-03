@@ -103,48 +103,74 @@ export function weightedRandom<T>(
   return candidates[candidates.length - 1];
 }
 
+export type SelectRecipientOptions = {
+  inboundUsed?: Record<string, number>;
+  maxInboundPerDay?: number;
+  /** How often this sender→receiver pair was used recently (lower is better) */
+  pairUsage?: Record<string, number>;
+};
+
+function remainingInbound(
+  receiverId: string,
+  inboundUsed: Record<string, number>,
+  maxInboundPerDay: number
+): number {
+  return Math.max(0, maxInboundPerDay - (inboundUsed[receiverId] ?? 0));
+}
+
 /**
- * Select a recipient for a given sender.
+ * Select a NEW recipient for an OLD sender.
  *
- * Pairing rules (warmup intent):
- * - OLD senders → only NEW accounts (trusted mail builds new reputation)
- * - NEW senders → prefer OLD accounts (natural outbound to trusted inboxes);
- *   other NEW allowed as light fallback if no OLD available
- *
- * Also applies trust-weight bias among allowed candidates and pair cooldown.
+ * Pairing rules:
+ * - OLD → NEW only (never OLD → OLD; NEW never initiates)
+ * - Skip NEW inboxes already at today's inbound cap
+ * - Avoid the same sender→receiver pair when another NEW is available
+ * - Spread mail across the NEW pool (least inbound today, least-used pair)
  */
 export function selectRecipient(
   senderId: string,
   activeAccounts: AccountInput[],
   trustWeights: Record<string, number>,
-  recentPairs: Set<string>, // "senderId:receiverId" pairs within cooldown
+  recentPairs: Set<string>,
   rng: RngFn = Math.random,
-  senderRole?: string
+  senderRole?: string,
+  options: SelectRecipientOptions = {}
 ): AccountInput | null {
   const sender =
     senderRole !== undefined
       ? { role: senderRole }
       : activeAccounts.find((a) => a.id === senderId);
 
-  let candidates = activeAccounts.filter(
-    (a) => a.id !== senderId && !recentPairs.has(`${senderId}:${a.id}`)
-  );
-
-  if (sender?.role === "OLD") {
-    // Old accounts warm new ones — never OLD → OLD
-    candidates = candidates.filter((a) => a.role === "NEW");
-  } else if (sender?.role === "NEW") {
-    // NEW accounts do not initiate warmup mail — they only reply in-thread.
-    // Planned outbound for NEW is volume 0; this is a hard guard.
+  if (sender?.role === "NEW") {
     return null;
   }
 
-  if (candidates.length === 0) return null;
+  const inboundUsed = options.inboundUsed ?? {};
+  const maxInboundPerDay = options.maxInboundPerDay ?? Number.POSITIVE_INFINITY;
+  const pairUsage = options.pairUsage ?? {};
+
+  const eligibleNew = activeAccounts.filter(
+    (a) =>
+      a.id !== senderId &&
+      a.role === "NEW" &&
+      remainingInbound(a.id, inboundUsed, maxInboundPerDay) > 0
+  );
+
+  if (eligibleNew.length === 0) return null;
+
+  const notOnCooldown = eligibleNew.filter(
+    (a) => !recentPairs.has(`${senderId}:${a.id}`)
+  );
+  const candidates = notOnCooldown.length > 0 ? notOnCooldown : eligibleNew;
 
   const weights = candidates.map((c) => {
+    const remaining = remainingInbound(c.id, inboundUsed, maxInboundPerDay);
+    const usedPair = pairUsage[`${senderId}:${c.id}`] ?? 0;
     const tw = trustWeights[c.id] ?? 0;
-    // Among NEW recipients, lower trust still gets slightly more inbound
-    return (1 - tw) * 0.7 + 0.3;
+    return Math.max(
+      0.01,
+      remaining * 8 + (4 / (1 + usedPair)) + (1 - tw) * 0.5 + rng() * 0.2
+    );
   });
 
   return weightedRandom(candidates, weights, rng);
@@ -203,7 +229,8 @@ export function buildDailyPlan(
   today: Date = new Date(),
   recentPairsFn: (senderId: string) => Set<string> = () => new Set(),
   rng: RngFn = Math.random,
-  inboundAlreadyToday: Record<string, number> = {}
+  inboundAlreadyToday: Record<string, number> = {},
+  pairUsage: Record<string, number> = {}
 ): DailyPlan {
   const activeAccounts = accounts.filter((a) => a.status === "ACTIVE");
   if (activeAccounts.length < 2) {
@@ -225,12 +252,20 @@ export function buildDailyPlan(
 
   // Remaining inbound capacity per NEW (plan-local + already delivered today)
   const inboundUsed: Record<string, number> = { ...inboundAlreadyToday };
+  const pairUsageLive: Record<string, number> = { ...pairUsage };
+
+  // Shuffle OLD senders so the same account is not always first in the queue
+  const senders = [...activeAccounts];
+  for (let i = senders.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [senders[i], senders[j]] = [senders[j], senders[i]];
+  }
 
   // Compute volumes and generate timestamps
   const accountVolumes: Record<string, number> = {};
   const allSlots: SendSlot[] = [];
 
-  for (const sender of activeAccounts) {
+  for (const sender of senders) {
     const tw = trustWeights[sender.id];
     let targetVolume = computeDailyTargetVolume(tw, totalActive, config, true, rng);
 
@@ -262,39 +297,29 @@ export function buildDailyPlan(
 
     // Mutable copy so same-day plan doesn't reuse the same pair repeatedly
     const recentPairs = new Set(recentPairsFn(sender.id));
+    const selectOpts: SelectRecipientOptions = {
+      inboundUsed,
+      maxInboundPerDay: safety.maxInboundPerReceiverPerDay,
+      pairUsage: pairUsageLive,
+    };
 
     for (const ts of timestamps) {
-      let recipient = selectRecipient(
+      const recipient = selectRecipient(
         sender.id,
         activeAccounts,
         trustWeights,
         recentPairs,
         rng,
-        sender.role
+        sender.role,
+        selectOpts
       );
-
-      // Soften cooldown: if every NEW is on cooldown but still has inbound room,
-      // allow the pair anyway (avoids 0-slot days after FAILED/flood noise).
-      if (!recipient && sender.role === "OLD") {
-        recipient = selectRecipient(
-          sender.id,
-          activeAccounts,
-          trustWeights,
-          new Set(),
-          rng,
-          sender.role
-        );
-      }
 
       if (!recipient) continue;
 
-      const used = inboundUsed[recipient.id] ?? 0;
-      if (used >= safety.maxInboundPerReceiverPerDay) {
-        continue;
-      }
-
-      inboundUsed[recipient.id] = used + 1;
-      recentPairs.add(`${sender.id}:${recipient.id}`);
+      const pairKey = `${sender.id}:${recipient.id}`;
+      inboundUsed[recipient.id] = (inboundUsed[recipient.id] ?? 0) + 1;
+      pairUsageLive[pairKey] = (pairUsageLive[pairKey] ?? 0) + 1;
+      recentPairs.add(pairKey);
 
       allSlots.push({
         senderId: sender.id,
