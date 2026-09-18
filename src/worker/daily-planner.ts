@@ -232,6 +232,26 @@ export async function runDailyPlanner(): Promise<void> {
     }
     if (plan.slots.length > 0) {
       logger.info({ pairSummary, pairUsage }, "Pairing rotation for today's plan");
+      const newEmails = accounts
+        .filter((a) => a.role === "NEW" && a.status === "ACTIVE")
+        .map((a) => a.email);
+      const covered = new Set(
+        plan.slots
+          .map((s) => accountById.get(s.receiverId)?.email)
+          .filter(Boolean)
+      );
+      const uncoveredNew = newEmails.filter((e) => !covered.has(e));
+      if (uncoveredNew.length > 0) {
+        logger.warn(
+          { uncoveredNew },
+          "Some ACTIVE NEW accounts still have 0 slots after coverage pass"
+        );
+      } else {
+        logger.info(
+          { newEmails },
+          "All ACTIVE NEW accounts have ≥1 inbound slot today"
+        );
+      }
     }
     if (plan.slots.length === 0 && oldCount > 0 && newCount > 0) {
       logger.warn(

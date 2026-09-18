@@ -31,8 +31,32 @@ const OPENABLE_STATUSES = [
   "RESCUED_FROM_SPAM",
 ] as const;
 
-async function connectImap(account: Account): Promise<ImapFlow | null> {
-  const appPassword = decrypt(account.appPassword);
+async function connectImap(
+  account: Account,
+  opts: { setErrorOnAuthFailure?: boolean } = {}
+): Promise<ImapFlow | null> {
+  const setErrorOnAuthFailure = opts.setErrorOnAuthFailure !== false;
+  let appPassword: string;
+  try {
+    appPassword = decrypt(account.appPassword);
+  } catch (err) {
+    logger.error(
+      { accountId: account.id, email: account.email, err },
+      "Failed to decrypt app password (ENCRYPTION_KEY mismatch?)"
+    );
+    if (setErrorOnAuthFailure) {
+      await prisma.account.update({
+        where: { id: account.id },
+        data: {
+          status: "ERROR",
+          dailyTargetVolume: 0,
+          lastError: "Failed to decrypt app password — check ENCRYPTION_KEY",
+        },
+      });
+    }
+    return null;
+  }
+
   const client = new ImapFlow({
     host: account.imapHost,
     port: account.imapPort,
@@ -71,7 +95,7 @@ async function connectImap(account: Account): Promise<ImapFlow | null> {
       error.message?.includes("Invalid credentials") ||
       error.message?.includes("535");
 
-    if (isAuthError) {
+    if (isAuthError && setErrorOnAuthFailure) {
       await prisma.account.update({
         where: { id: account.id },
         data: {
@@ -105,7 +129,8 @@ async function markInboundFromSenderRead(
   account: Account,
   fromEmail: string
 ): Promise<number> {
-  const client = await connectImap(account);
+  // Never flip account to ERROR for a mark-read attempt — replies must still send via SMTP
+  const client = await connectImap(account, { setErrorOnAuthFailure: false });
   if (!client) return 0;
 
   let marked = 0;
@@ -304,26 +329,7 @@ async function sendReply(
     });
     if (!latest || latest.repliedAt || latest.status === "REPLIED") return;
 
-    // Read first (like a human), then reply — SMTP alone never clears Gmail unread
-    const markedRead = await markInboundFromSenderRead(
-      replierAccount,
-      originalEvent.sender.email
-    );
-    if (markedRead === 0) {
-      logger.warn(
-        {
-          replier: replierAccount.email,
-          from: originalEvent.sender.email,
-        },
-        "No unread message found to mark read before reply — will retry after send"
-      );
-    } else {
-      await prisma.warmupEvent.update({
-        where: { id: originalEvent.id },
-        data: { status: "OPENED", openedAt: new Date() },
-      });
-    }
-
+    // SMTP reply first — IMAP often times out on NEW accounts and must not block replies
     const replyerName = resolveDisplayName(
       replierAccount.displayName,
       replierAccount.email
@@ -363,7 +369,28 @@ async function sendReply(
       replierAccount.role
     );
 
-    const appPassword = decrypt(replierAccount.appPassword);
+    let appPassword: string;
+    try {
+      appPassword = decrypt(replierAccount.appPassword);
+    } catch (err) {
+      logger.error(
+        {
+          err,
+          replier: replierAccount.email,
+          originalEventId: originalEvent.id,
+        },
+        "Reply aborted — cannot decrypt app password (ENCRYPTION_KEY mismatch on Contabo?)"
+      );
+      await prisma.account.update({
+        where: { id: replierAccount.id },
+        data: {
+          status: "ERROR",
+          lastError: "Failed to decrypt app password — check ENCRYPTION_KEY matches Vercel",
+        },
+      });
+      return;
+    }
+
     const transporter = nodemailer.createTransport({
       host: replierAccount.smtpHost,
       port: replierAccount.smtpPort,
@@ -389,7 +416,11 @@ async function sendReply(
 
     await prisma.warmupEvent.update({
       where: { id: originalEvent.id },
-      data: { status: "REPLIED", repliedAt: new Date() },
+      data: {
+        status: "REPLIED",
+        repliedAt: new Date(),
+        openedAt: new Date(),
+      },
     });
 
     await prisma.warmupEvent.create({
@@ -415,20 +446,53 @@ async function sendReply(
         replyTo: originalEvent.sender.email,
         phase,
         threadDepth: nextDepth,
-        markedReadBeforeReply: markedRead,
       },
       "In-thread reply sent"
     );
 
-    // Backup: mark read again after reply (Gmail thread can stay bold otherwise)
-    if (markedRead === 0) {
+    // Best-effort: mark inbound as read after SMTP success (never blocks replies)
+    try {
       await markInboundFromSenderRead(
         replierAccount,
         originalEvent.sender.email
       );
+    } catch (err) {
+      logger.warn(
+        { err, replier: replierAccount.email },
+        "Post-reply mark-read failed (non-fatal)"
+      );
     }
   } catch (err) {
-    logger.error({ err, originalEventId: originalEvent.id }, "Failed to send reply");
+    const error = err as Error;
+    logger.error(
+      {
+        err,
+        originalEventId: originalEvent.id,
+        replier: replierAccount.email,
+      },
+      "Failed to send reply"
+    );
+
+    const isAuthError =
+      error.message?.includes("Invalid login") ||
+      error.message?.includes("AUTHENTICATIONFAILED") ||
+      error.message?.includes("535") ||
+      error.message?.includes("Username and Password not accepted");
+
+    if (isAuthError) {
+      await prisma.account.update({
+        where: { id: replierAccount.id },
+        data: {
+          status: "ERROR",
+          dailyTargetVolume: 0,
+          lastError: `SMTP reply auth failed: ${error.message}`,
+        },
+      });
+      logger.warn(
+        { email: replierAccount.email },
+        "NEW/OLD account set to ERROR after reply SMTP auth failure — re-add app password"
+      );
+    }
   }
 }
 
@@ -451,7 +515,8 @@ export async function processPendingNewReplies(): Promise<void> {
   const sentReady = new Date(now - 12 * 60 * 1000);
   const since = new Date(now - 24 * 60 * 60 * 1000);
 
-  // Any openable event below max depth can receive the next in-thread reply
+  // Fetch a larger pool, then pick fairly across NEW (and OLD) receivers
+  // so one busy inbox (e.g. George) cannot starve Maxwell/Martin.
   const candidates = await prisma.warmupEvent.findMany({
     where: {
       AND: [
@@ -485,16 +550,29 @@ export async function processPendingNewReplies(): Promise<void> {
     },
     include: { sender: true, receiver: true },
     orderBy: { sentAt: "asc" },
-    take: 5,
+    take: 40,
   });
 
-  if (candidates.length > 0) {
+  // One pending reply per receiver per tick (round-robin across inboxes)
+  const selected: typeof candidates = [];
+  const seenReceivers = new Set<string>();
+  for (const event of candidates) {
+    if (seenReceivers.has(event.receiverId)) continue;
+    seenReceivers.add(event.receiverId);
+    selected.push(event);
+    if (selected.length >= 10) break;
+  }
+
+  if (selected.length > 0) {
     logger.info(
-      { count: candidates.length },
+      {
+        count: selected.length,
+        repliers: selected.map((e) => e.receiver.email),
+      },
       "Pending in-thread replies (multi-message warmup)"
     );
 
-    for (const event of candidates) {
+    for (const event of selected) {
       if (replyInFlight.has(event.id)) continue;
       replyInFlight.add(event.id);
       try {

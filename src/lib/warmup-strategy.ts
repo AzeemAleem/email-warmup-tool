@@ -165,11 +165,18 @@ export function selectRecipient(
 
   const weights = candidates.map((c) => {
     const remaining = remainingInbound(c.id, inboundUsed, maxInboundPerDay);
+    const usedToday = inboundUsed[c.id] ?? 0;
     const usedPair = pairUsage[`${senderId}:${c.id}`] ?? 0;
     const tw = trustWeights[c.id] ?? 0;
+    // Strongly prefer NEW inboxes that have received nothing today (covers brand-new accounts)
+    const coverageBoost = usedToday === 0 ? 40 : 0;
     return Math.max(
       0.01,
-      remaining * 8 + (4 / (1 + usedPair)) + (1 - tw) * 0.5 + rng() * 0.2
+      coverageBoost +
+        remaining * 8 +
+        4 / (1 + usedPair) +
+        (1 - tw) * 0.5 +
+        rng() * 0.2
     );
   });
 
@@ -328,6 +335,51 @@ export function buildDailyPlan(
       });
     }
   }
+
+  // Coverage pass: every ACTIVE NEW with remaining inbound room must get ≥1 slot
+  // when there is at least one OLD sender (fixes brand-new accounts missing today's plan).
+  if (oldCount > 0 && newCount > 0) {
+    const receiversHit = new Set(allSlots.map((s) => s.receiverId));
+    const starvedNew = newAccounts.filter(
+      (a) =>
+        remainingInbound(a.id, inboundUsed, safety.maxInboundPerReceiverPerDay) >
+          0 && !receiversHit.has(a.id)
+    );
+
+    for (const newbie of starvedNew) {
+      // Prefer an OLD that has not mailed this NEW recently
+      const oldSorted = [...oldAccounts].sort((a, b) => {
+        const ua = pairUsageLive[`${a.id}:${newbie.id}`] ?? 0;
+        const ub = pairUsageLive[`${b.id}:${newbie.id}`] ?? 0;
+        return ua - ub;
+      });
+      const donor = oldSorted[0];
+      if (!donor) continue;
+
+      const dayStart = new Date(today);
+      dayStart.setHours(config.activeHourStart, 0, 0, 0);
+      const dayEnd = new Date(today);
+      dayEnd.setHours(config.activeHourEnd, 0, 0, 0);
+      const window = Math.max(1, dayEnd.getTime() - dayStart.getTime());
+      const scheduledFor = new Date(
+        dayStart.getTime() + Math.floor(rng() * window)
+      );
+
+      const pairKey = `${donor.id}:${newbie.id}`;
+      inboundUsed[newbie.id] = (inboundUsed[newbie.id] ?? 0) + 1;
+      pairUsageLive[pairKey] = (pairUsageLive[pairKey] ?? 0) + 1;
+      accountVolumes[donor.id] = (accountVolumes[donor.id] ?? 0) + 1;
+
+      allSlots.push({
+        senderId: donor.id,
+        receiverId: newbie.id,
+        scheduledFor,
+      });
+    }
+  }
+
+  // Keep chronological order for the SMTP queue
+  allSlots.sort((a, b) => a.scheduledFor.getTime() - b.scheduledFor.getTime());
 
   return { slots: allSlots, accountVolumes };
 }
