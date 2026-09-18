@@ -26,7 +26,19 @@ export const sessionOptions: SessionOptions = {
 };
 
 export async function getSession(): Promise<IronSession<SessionData>> {
-  return getIronSession<SessionData>(await cookies(), sessionOptions);
+  try {
+    return await getIronSession<SessionData>(await cookies(), sessionOptions);
+  } catch (err) {
+    // Bad/stale cookie after SESSION_SECRET change — clear and start fresh
+    console.error("Session decrypt failed; clearing warmup-session cookie", err);
+    const cookieStore = await cookies();
+    try {
+      cookieStore.delete(sessionOptions.cookieName);
+    } catch {
+      /* ignore */
+    }
+    return await getIronSession<SessionData>(cookieStore, sessionOptions);
+  }
 }
 
 export async function requireAuth(): Promise<SessionData> {

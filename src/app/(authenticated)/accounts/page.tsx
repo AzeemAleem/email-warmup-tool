@@ -2,6 +2,8 @@ import { prisma } from "@/lib/db";
 import { AccountsTable } from "./AccountsTable";
 import { AddAccountButton } from "./AddAccountButton";
 
+export const dynamic = "force-dynamic";
+
 export default async function AccountsPage() {
   const accounts = await prisma.account.findMany({
     where: { status: { not: "REMOVED" } },

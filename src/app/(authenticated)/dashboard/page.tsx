@@ -61,7 +61,13 @@ async function getDashboardData() {
 }
 
 export default async function DashboardPage() {
-  const data = await getDashboardData();
+  let data;
+  try {
+    data = await getDashboardData();
+  } catch (err) {
+    console.error("Dashboard data load failed", err);
+    throw err;
+  }
   const safety = resolveSafetyLimits(data.config);
 
   const todaySent = data.todayStats.find((s) => s.status === "SENT")?._count || 0;
