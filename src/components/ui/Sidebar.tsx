@@ -8,6 +8,7 @@ import {
   Cog6ToothIcon,
   ClipboardDocumentListIcon,
   ArrowRightOnRectangleIcon,
+  CubeIcon,
 } from "@heroicons/react/24/outline";
 import { clsx } from "clsx";
 
@@ -16,6 +17,7 @@ const navigation = [
   { name: "Accounts", href: "/accounts", icon: UsersIcon },
   { name: "Event Log", href: "/events", icon: ClipboardDocumentListIcon },
   { name: "Config", href: "/config", icon: Cog6ToothIcon },
+  { name: "Mailer Box Calculator", href: "/mailer-box-calculator", icon: CubeIcon },
 ];
 
 export function Sidebar() {
