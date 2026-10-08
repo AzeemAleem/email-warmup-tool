@@ -125,7 +125,7 @@ export function AccountsTable({ accounts }: AccountsTableProps) {
             {accounts.length === 0 && (
               <tr>
                 <td colSpan={10} className="px-4 py-12 text-center text-gray-500">
-                  No accounts yet. Click "Add Account" to get started.
+                  No accounts yet. Click &quot;Add Account&quot; to get started.
                 </td>
               </tr>
             )}

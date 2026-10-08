@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "next dev",
@@ -11,8 +11,7 @@
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "npx ts-node --transpile-only --compiler-options \"{\\\"module\\\":\\\"commonjs\\\",\\\"moduleResolution\\\":\\\"node\\\"}\" scripts/test-mailer-box.ts",
     "worker": "node ./node_modules/ts-node/dist/bin.js --project tsconfig.worker.json src/worker/index.ts",
     "worker:dev": "ts-node-dev --project tsconfig.worker.json --respawn src/worker/index.ts",
     "worker:rebuild-plan": "node ./node_modules/ts-node/dist/bin.js --project tsconfig.worker.json src/worker/rebuild-today-plan.ts",
@@ -63,7 +62,6 @@
     "tailwindcss": "^3.4.1",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5",
-    "vitest": "^2.1.9"
+    "typescript": "^5"
   }
 }
