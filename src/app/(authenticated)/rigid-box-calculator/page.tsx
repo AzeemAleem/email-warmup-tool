@@ -21,6 +21,7 @@ import {
   quantityError,
   runCostEngine,
 } from "@/lib/cost/costEngine";
+import { downloadRigidCostPdf } from "@/lib/cost/exportCostPdf";
 import { parseDebossTotal } from "@/lib/cost/items/debossCost";
 import { parseDieTotal } from "@/lib/cost/items/dieCost";
 import { parseEmbossingTotal } from "@/lib/cost/items/embossingCost";
@@ -163,6 +164,7 @@ export default function RigidBoxCalculatorPage() {
   const [quantityTouched, setQuantityTouched] = useState(false);
   const [profitRatioRaw, setProfitRatioRaw] = useState("");
   const [extraRaw, setExtraRaw] = useState("");
+  const [clientName, setClientName] = useState("");
   const [paperType, setPaperType] = useState<PaperType>("art");
   const [printSides, setPrintSides] = useState<PrintSides>("double");
   const [printColorMode, setPrintColorMode] =
@@ -452,6 +454,7 @@ export default function RigidBoxCalculatorPage() {
     setQuantityTouched(false);
     setProfitRatioRaw("");
     setExtraRaw("");
+    setClientName("");
     setPaperType("art");
     setPrintSides("double");
     setPrintColorMode("cmyk");
@@ -540,6 +543,21 @@ export default function RigidBoxCalculatorPage() {
       </div>
 
       <Card>
+        <div className="mb-5">
+          <label className="block text-xs font-medium text-gray-400 mb-1.5">
+            Client name
+          </label>
+          <input
+            type="text"
+            value={clientName}
+            onChange={(e) => setClientName(e.target.value)}
+            placeholder="e.g. Acme Packaging Co."
+            className={inputCls(false)}
+          />
+          <p className="mt-1 text-[11px] text-gray-600">
+            Included on the PDF quote export
+          </p>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
@@ -1066,7 +1084,7 @@ export default function RigidBoxCalculatorPage() {
         )}
       </Card>
 
-      {result && quantity != null && costResult && (
+      {result && quantity != null && costResult && L != null && W != null && H != null && (
         <Card>
           <CostCalculation
             result={costResult}
@@ -1074,6 +1092,25 @@ export default function RigidBoxCalculatorPage() {
             config={costConfig}
             onConfigChange={setCostConfig}
             profitRatio={profitRatio}
+            clientName={clientName}
+            onDownloadPdf={() =>
+              downloadRigidCostPdf({
+                clientName,
+                length: L,
+                width: W,
+                height: H,
+                unit,
+                openWidthIn: result.in.openWidth,
+                openHeightIn: result.in.openHeight,
+                quantity,
+                paperType,
+                printSides: paperType === "art" ? printSides : "single",
+                printColorMode,
+                profitRatio: profitRatio ?? 1,
+                usdRate: costConfig.fx.usdRate,
+                costResult,
+              })
+            }
             spotUvEnabled={spotUvEnabled}
             spotUvOverride={spotUvOverride}
             spotUvManualRaw={spotUvManualRaw}

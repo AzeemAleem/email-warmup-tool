@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowPathIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowDownTrayIcon,
+  ArrowPathIcon,
+  ChevronDownIcon,
+} from "@heroicons/react/24/outline";
 import { clsx } from "clsx";
 import { Card } from "@/components/ui/Card";
 import {
@@ -87,6 +91,8 @@ interface Props {
   embossing?: OverrideControls;
   /** Profit multiplier, e.g. 1.5 = +50%. Invalid/empty → treat as 1. */
   profitRatio?: number | null;
+  clientName?: string;
+  onDownloadPdf?: () => void;
 }
 
 const inputCls =
@@ -832,6 +838,8 @@ export function CostCalculation({
   deboss,
   embossing,
   profitRatio,
+  clientName,
+  onDownloadPdf,
 }: Props) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -1002,21 +1010,40 @@ export function CostCalculation({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-white">Cost Calculation</h2>
-        <button
-          type="button"
-          onClick={() => setShowAdvanced((v) => !v)}
-          className="flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-gray-200 transition-colors"
-        >
-          <ChevronDownIcon
-            className={clsx(
-              "h-3.5 w-3.5 transition-transform",
-              showAdvanced && "rotate-180",
-            )}
-          />
-          Cost settings
-        </button>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-white">Cost Calculation</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {clientName?.trim()
+              ? `Quote for ${clientName.trim()}`
+              : "Add a client name above to include it on the PDF"}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((v) => !v)}
+            className="flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-gray-200 transition-colors"
+          >
+            <ChevronDownIcon
+              className={clsx(
+                "h-3.5 w-3.5 transition-transform",
+                showAdvanced && "rotate-180",
+              )}
+            />
+            Cost settings
+          </button>
+          {onDownloadPdf && (
+            <button
+              type="button"
+              onClick={onDownloadPdf}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-indigo-500 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-4 w-4" />
+              Download PDF
+            </button>
+          )}
+        </div>
       </div>
 
       {showAdvanced && (
