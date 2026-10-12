@@ -9,6 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { clsx } from "clsx";
 import { Card } from "@/components/ui/Card";
+import { SheetOptimization } from "@/components/mailer/SheetOptimization";
 import {
   calcMailerBox,
   convertLength,
@@ -71,6 +72,14 @@ export default function MailerBoxCalculatorPage() {
   const [foldInput, setFoldInput] = useState(() =>
     formatForInput(fromMm(DEFAULT_OPTIONS.foldAllowanceMm, "in"), "in"),
   );
+  const [paddingWIn, setPaddingWIn] = useState(DEFAULT_OPTIONS.paddingWIn ?? 1);
+  const [paddingHIn, setPaddingHIn] = useState(DEFAULT_OPTIONS.paddingHIn ?? 1);
+  const [paddingWInput, setPaddingWInput] = useState(
+    String(DEFAULT_OPTIONS.paddingWIn ?? 1),
+  );
+  const [paddingHInput, setPaddingHInput] = useState(
+    String(DEFAULT_OPTIONS.paddingHIn ?? 1),
+  );
   const [copied, setCopied] = useState(false);
 
   function switchUnit(next: LengthUnit) {
@@ -94,6 +103,15 @@ export default function MailerBoxCalculatorPage() {
     const n = Number(raw);
     if (!Number.isFinite(n) || n < 0) return;
     setFoldAllowanceMm(toMm(n, unit));
+  }
+
+  function updatePadding(axis: "w" | "h", raw: string) {
+    if (axis === "w") setPaddingWInput(raw);
+    else setPaddingHInput(raw);
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) return;
+    if (axis === "w") setPaddingWIn(n);
+    else setPaddingHIn(n);
   }
 
   const L = parsePositive(length);
@@ -125,6 +143,10 @@ export default function MailerBoxCalculatorPage() {
     setFoldInput(
       formatForInput(fromMm(DEFAULT_OPTIONS.foldAllowanceMm, unit), unit),
     );
+    setPaddingWIn(DEFAULT_OPTIONS.paddingWIn ?? 1);
+    setPaddingHIn(DEFAULT_OPTIONS.paddingHIn ?? 1);
+    setPaddingWInput(String(DEFAULT_OPTIONS.paddingWIn ?? 1));
+    setPaddingHInput(String(DEFAULT_OPTIONS.paddingHIn ?? 1));
     setCopied(false);
   }
 
@@ -158,12 +180,12 @@ export default function MailerBoxCalculatorPage() {
     );
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-4xl">
       <div>
         <h1 className="text-xl font-semibold text-white">Mailer Box Calculator</h1>
         <p className="text-sm text-gray-400 mt-1">
           Enter closed RETT mailer dimensions (double side walls) to get the flat
-          die-cut open size.
+          die-cut open size, then find the best printing sheet.
         </p>
       </div>
 
@@ -271,24 +293,60 @@ export default function MailerBoxCalculatorPage() {
             Advanced settings
           </button>
           {showAdvanced && (
-            <div className="mt-3 max-w-xs">
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                Fold allowance ({unit})
-              </label>
-              <input
-                type="number"
-                inputMode="decimal"
-                step="any"
-                min="0"
-                value={foldInput}
-                onChange={(e) => updateFoldAllowance(e.target.value)}
-                className={inputCls(false)}
-              />
-              <p className="mt-1 text-[11px] text-gray-600">
-                Default{" "}
-                {formatLength(fromMm(DEFAULT_OPTIONS.foldAllowanceMm, unit), unit)}{" "}
-                {unit} (13 mm). Added to open width only.
-              </p>
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                  Fold allowance ({unit})
+                </label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min="0"
+                  value={foldInput}
+                  onChange={(e) => updateFoldAllowance(e.target.value)}
+                  className={inputCls(false)}
+                />
+                <p className="mt-1 text-[11px] text-gray-600">
+                  Default{" "}
+                  {formatLength(fromMm(DEFAULT_OPTIONS.foldAllowanceMm, unit), unit)}{" "}
+                  {unit} (13 mm). Open width only.
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                  Nesting padding W (in)
+                </label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min="0"
+                  value={paddingWInput}
+                  onChange={(e) => updatePadding("w", e.target.value)}
+                  className={inputCls(false)}
+                />
+                <p className="mt-1 text-[11px] text-gray-600">
+                  Default {DEFAULT_OPTIONS.paddingWIn ?? 1} in (PADDING_W_IN)
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                  Nesting padding H (in)
+                </label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min="0"
+                  value={paddingHInput}
+                  onChange={(e) => updatePadding("h", e.target.value)}
+                  className={inputCls(false)}
+                />
+                <p className="mt-1 text-[11px] text-gray-600">
+                  Default {DEFAULT_OPTIONS.paddingHIn ?? 1} in (PADDING_H_IN)
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -409,6 +467,19 @@ export default function MailerBoxCalculatorPage() {
           </div>
         )}
       </Card>
+
+      {/* Part B — Sheet Optimization */}
+      {result && (
+        <Card>
+          <SheetOptimization
+            openWidthIn={result.in.openWidth}
+            openHeightIn={result.in.openHeight}
+            paddingWIn={paddingWIn}
+            paddingHIn={paddingHIn}
+            unit={unit}
+          />
+        </Card>
+      )}
     </div>
   );
 }
