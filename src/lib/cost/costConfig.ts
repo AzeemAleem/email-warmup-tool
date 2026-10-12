@@ -154,7 +154,7 @@ export const DEFAULT_EMBOSSING_CONFIG: Readonly<FixedJobConfig> = {
 };
 
 export const DEFAULT_WEIGHT_CONFIG: Readonly<WeightConfig> = {
-  gsm: 1400,
+  gsm: 1600,
   divisor: 15500,
   scale: 100,
 };

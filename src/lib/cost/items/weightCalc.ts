@@ -3,7 +3,7 @@ import type { WeightConfig } from "../costConfig";
 /**
  * Per-unit weight (kg) from open size in inches (no art padding):
  * (openW × openH × GSM / DIVISOR) / SCALE
- * e.g. (12 × 27 × 1400 / 15500) / 100
+ * e.g. (12 × 27 × 1600 / 15500) / 100
  */
 export function calcWeightPerUnitKg(
   openWidthIn: number,

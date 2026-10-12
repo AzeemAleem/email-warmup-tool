@@ -144,7 +144,7 @@ assert.ok(ALL_SHEETS.length > 4);
   assert.ok(r);
   assert.equal(r!.items.find((i) => i.id === "greyboard")!.total, 29264);
   assert.equal(r!.items.find((i) => i.id === "paper")!.excluded, true);
-  assert.equal(r!.grandTotal, 29264 + ship12x27(200));
+  assert.equal(r!.grandTotal, roundMoney(29264 + ship12x27(200)));
 }
 
 // ── art paper sheet cost ───────────────────────────────────────────────────
@@ -249,7 +249,7 @@ assert.ok(ALL_SHEETS.length > 4);
   assert.equal(r!.items.find((i) => i.id === "greyboard")!.total, 29264);
   assert.equal(r!.items.find((i) => i.id === "paper")!.total, 29032);
   assert.equal(r!.items.find((i) => i.id === "paper")!.label, "Paper (Art Paper)");
-  assert.equal(r!.grandTotal, 58296 + ship12x27(200));
+  assert.equal(r!.grandTotal, roundMoney(58296 + ship12x27(200)));
   assert.deepEqual(registeredCostItemIds(), [
     "greyboard",
     "paper",
@@ -277,7 +277,7 @@ assert.ok(ALL_SHEETS.length > 4);
   assert.ok(r);
   assert.equal(r!.items.find((i) => i.id === "greyboard")!.total, 73160);
   assert.equal(r!.items.find((i) => i.id === "paper")!.total, 50806);
-  assert.equal(r!.grandTotal, 123966 + ship12x27(500));
+  assert.equal(r!.grandTotal, roundMoney(123966 + ship12x27(500)));
 }
 
 // ── morocco engine; print sides has no effect ──────────────────────────────
@@ -298,7 +298,7 @@ assert.ok(ALL_SHEETS.length > 4);
   assert.equal(base!.grandTotal, single!.grandTotal);
   assert.equal(base!.items.find((i) => i.id === "paper")!.total, 21482);
   assert.equal(base!.items.find((i) => i.id === "paper")!.label, "Paper (Morocco)");
-  assert.equal(base!.grandTotal, 29264 + 21482 + ship12x27(200));
+  assert.equal(base!.grandTotal, roundMoney(29264 + 21482 + ship12x27(200)));
 }
 
 // ── same cost from mm / cm / in ────────────────────────────────────────────
@@ -346,7 +346,7 @@ assert.ok(ALL_SHEETS.length > 4);
   assert.ok(costIn && costMm && costCm);
   assert.equal(costIn!.grandTotal, costMm!.grandTotal);
   assert.equal(costIn!.grandTotal, costCm!.grandTotal);
-  assert.equal(costIn!.grandTotal, 58296 + ship12x27(200));
+  assert.equal(costIn!.grandTotal, roundMoney(58296 + ship12x27(200)));
 }
 
 // ── changing art constants changes result ──────────────────────────────────
@@ -488,7 +488,7 @@ assert.equal(
   });
   assert.ok(r);
   assert.equal(r!.items.find((i) => i.id === "lamination")!.total, 33336);
-  assert.equal(r!.grandTotal, 29264 + 29032 + 33336 + ship12x27(200));
+  assert.equal(r!.grandTotal, roundMoney(29264 + 29032 + 33336 + ship12x27(200)));
 }
 
 // ── Spot UV ────────────────────────────────────────────────────────────────
@@ -524,7 +524,7 @@ assert.equal(
   });
   assert.ok(r);
   assert.equal(r!.items.find((i) => i.id === "spotUv")!.total, 10000);
-  assert.equal(r!.grandTotal, 29264 + 29032 + 10000 + ship12x27(200));
+  assert.equal(r!.grandTotal, roundMoney(29264 + 29032 + 10000 + ship12x27(200)));
 }
 
 {
@@ -539,7 +539,7 @@ assert.equal(
   const uv = missing!.items.find((i) => i.id === "spotUv")!;
   assert.equal(uv.excluded, true);
   assert.equal(uv.warning, "Enter Spot UV cost");
-  assert.equal(missing!.grandTotal, 73160 + 50806 + ship12x27(500));
+  assert.equal(missing!.grandTotal, roundMoney(73160 + 50806 + ship12x27(500)));
 
   const withManual = runCostEngine(open12x27, 500, DEFAULT_COST_CONFIG, {
     paperType: "art",
@@ -550,7 +550,10 @@ assert.equal(
   });
   assert.ok(withManual);
   assert.equal(withManual!.items.find((i) => i.id === "spotUv")!.total, 18000);
-  assert.equal(withManual!.grandTotal, 73160 + 50806 + 18000 + ship12x27(500));
+  assert.equal(
+    withManual!.grandTotal,
+    roundMoney(73160 + 50806 + 18000 + ship12x27(500)),
+  );
 }
 
 {
@@ -589,7 +592,7 @@ assert.equal(
   });
   assert.ok(r);
   assert.equal(r!.items.find((i) => i.id === "die")!.total, 5000);
-  assert.equal(r!.grandTotal, 29264 + 29032 + 5000 + ship12x27(200));
+  assert.equal(r!.grandTotal, roundMoney(29264 + 29032 + 5000 + ship12x27(200)));
 }
 
 {
@@ -602,7 +605,7 @@ assert.equal(
   });
   assert.ok(r);
   assert.equal(r!.items.find((i) => i.id === "die")!.total, 8000);
-  assert.equal(r!.grandTotal, 29264 + 29032 + 8000 + ship12x27(200));
+  assert.equal(r!.grandTotal, roundMoney(29264 + 29032 + 8000 + ship12x27(200)));
 }
 
 {
@@ -704,7 +707,10 @@ assert.equal(
   assert.ok(r);
   assert.equal(r!.items.find((i) => i.id === "printing")!.total, 24000);
   assert.equal(r!.items.find((i) => i.id === "plates")!.total, 16000);
-  assert.equal(r!.grandTotal, 29264 + 29032 + 24000 + 16000 + ship12x27(200));
+  assert.equal(
+    r!.grandTotal,
+    roundMoney(29264 + 29032 + 24000 + 16000 + ship12x27(200)),
+  );
 }
 
 {
@@ -778,7 +784,8 @@ assert.equal(
 // ── Weight + shipping + USD ────────────────────────────────────────────────
 {
   const perKg = calcWeightPerUnitKg(12, 27, DEFAULT_COST_CONFIG.weight)!;
-  assert.ok(Math.abs(perKg - (12 * 27 * 1400) / 15500 / 100) < 1e-12);
+  assert.ok(Math.abs(perKg - (12 * 27 * 1600) / 15500 / 100) < 1e-12);
+  assert.equal(DEFAULT_COST_CONFIG.weight.gsm, 1600);
   assert.equal(calcTotalWeightKg(perKg, 200)!, perKg * 200);
 
   const ship = calcShippingCost(
@@ -793,7 +800,7 @@ assert.equal(
     ship.total,
     roundMoney(calcTotalWeightKg(perKg, 200)! * 3000),
   );
-  assert.equal(ship12x27(200), 175587.1);
+  assert.equal(ship12x27(200), ship.total);
 
   // Different open size changes weight/shipping
   const other = calcShippingCost(
@@ -856,7 +863,7 @@ assert.equal(
   assert.equal(line.perUnit, 25);
   assert.equal(
     withExtra!.grandTotal,
-    58296 + ship12x27(200) + 5000,
+    roundMoney(58296 + ship12x27(200) + 5000),
   );
 
   const none = runCostEngine(open12x27, 200, DEFAULT_COST_CONFIG, {
