@@ -193,9 +193,17 @@ export function downloadRigidCostPdf(input: RigidCostPdfInput): void {
   doc.text(displayClient, margin + 4, y + 12);
   y += 22;
 
-  // ── Job specs (2×4 grid cards) ───────────────────────────────────────────
+  // ── Job specs grid ───────────────────────────────────────────────────────
   sectionLabel(doc, "Job specifications", margin, y);
   y += 6;
+
+  const paperItem = costResult.items.find(
+    (i) => i.id === "paper" && !i.excluded,
+  );
+  const artMeta =
+    paperType === "art" && paperItem?.meta?.paperType === "art"
+      ? paperItem.meta
+      : null;
 
   const specs: [string, string][] = [
     ["Closed size", `${length} × ${width} × ${height} ${unit}`],
@@ -210,6 +218,24 @@ export function downloadRigidCostPdf(input: RigidCostPdfInput): void {
     ["Profit ratio", `× ${ratio}`],
     ["USD rate", `${usdRate} PKR`],
   ];
+
+  if (artMeta) {
+    const sw = Number(artMeta.sheetWidth ?? 0);
+    const sh = Number(artMeta.sheetHeight ?? 0);
+    const pcs = Number(artMeta.piecesPerSheet ?? 0);
+    const sheetsReq = Number(artMeta.piecesRequired ?? 0);
+      const physical = Number(artMeta.physicalSheets ?? 0);
+    const manualQty = !!artMeta.sheetsRequiredManual;
+    specs.push(
+      ["Art sheet selected", `${sw} × ${sh} in`],
+      ["Pieces / sheet", String(pcs)],
+      [
+        "Sheets for art cost",
+        `${sheetsReq.toLocaleString("en-US")}${manualQty ? " (manual)" : ""}`,
+      ],
+      ["Physical sheets", physical.toLocaleString("en-US")],
+    );
+  }
 
   const gap = 3;
   const cardW = (contentW - gap) / 2;
@@ -231,7 +257,11 @@ export function downloadRigidCostPdf(input: RigidCostPdfInput): void {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     rgb(doc, C.ink, "text");
-    doc.text(specs[i][1], x + 3, cy + 8.5);
+    const value = specs[i][1];
+    // Keep long values from overflowing the card
+    const clipped =
+      value.length > 36 ? `${value.slice(0, 34)}…` : value;
+    doc.text(clipped, x + 3, cy + 8.5);
   }
   y += Math.ceil(specs.length / 2) * (cardH + gap) + 4;
 
@@ -263,12 +293,24 @@ export function downloadRigidCostPdf(input: RigidCostPdfInput): void {
 
   const items = costResult.items.filter((i) => !i.excluded);
   items.forEach((item, idx) => {
-    const note =
-      item.id === "shipping" && item.meta
-        ? `${Number(item.meta.totalKg ?? 0).toLocaleString("en-US", {
-            maximumFractionDigits: 3,
-          })} kg @ ${formatPkrTotal(Number(item.meta.ratePerKg ?? 0))}/kg`
-        : "";
+    let note = "";
+    if (item.id === "shipping" && item.meta) {
+      note = `${Number(item.meta.totalKg ?? 0).toLocaleString("en-US", {
+        maximumFractionDigits: 3,
+      })} kg @ ${formatPkrTotal(Number(item.meta.ratePerKg ?? 0))}/kg`;
+    } else if (
+      item.id === "paper" &&
+      item.meta?.paperType === "art" &&
+      item.meta
+    ) {
+      const sw = Number(item.meta.sheetWidth ?? 0);
+      const sh = Number(item.meta.sheetHeight ?? 0);
+      const pcs = Number(item.meta.piecesPerSheet ?? 0);
+      const sheetsReq = Number(item.meta.piecesRequired ?? 0);
+      const perSheet = Number(item.meta.perSheetCost ?? 0);
+      const manual = item.meta.sheetsRequiredManual ? ", manual qty" : "";
+      note = `Sheet ${sw}×${sh} in · ${pcs} pcs/sheet · ${sheetsReq.toLocaleString("en-US")} sheets required${manual} · ${formatPkr(perSheet)}/sheet`;
+    }
     const h = note ? 9.2 : rowH;
 
     ensureSpace(h + 2);
