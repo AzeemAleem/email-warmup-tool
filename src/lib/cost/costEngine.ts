@@ -75,6 +75,8 @@ export interface CostEngineExtras {
   embossingManualTotal?: number | null;
   /** Optional extra expenses (PKR); null/0 = omit */
   extraTotal?: number | null;
+  /** Manual Art Paper total sheets required; null = automatic */
+  artSheetsRequiredManual?: number | null;
 }
 
 /** Parse quantity: whole number ≥ 1 only. Returns null if invalid. */
@@ -144,6 +146,10 @@ function buildContext(
         ? null
         : extras.embossingManualTotal,
     extraTotal: extras.extraTotal === undefined ? null : extras.extraTotal,
+    artSheetsRequiredManual:
+      extras.artSheetsRequiredManual === undefined
+        ? null
+        : extras.artSheetsRequiredManual,
   };
 }
 

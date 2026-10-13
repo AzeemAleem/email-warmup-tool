@@ -93,6 +93,23 @@ interface Props {
   profitRatio?: number | null;
   clientName?: string;
   onDownloadPdf?: () => void;
+  /** Art paper: editable total sheets required */
+  artSheetsOverride?: boolean;
+  artSheetsManualRaw?: string;
+  onArtSheetsOverrideChange?: (v: boolean) => void;
+  onArtSheetsManualRawChange?: (v: string) => void;
+  /** Fitting sheet choices for manual sheet selection */
+  artSheetOptions?: {
+    key: string;
+    width: number;
+    height: number;
+    piecesPerSheet: number;
+    wastagePercent: number;
+    isRecommended: boolean;
+  }[];
+  /** null = auto recommended */
+  artSheetKeyOverride?: string | null;
+  onArtSheetKeyChange?: (key: string | null) => void;
 }
 
 const inputCls =
@@ -134,13 +151,47 @@ function EstimateBadge() {
 function PaperCard({
   item,
   quantity,
+  artSheetsOverride,
+  artSheetsManualRaw,
+  onArtSheetsOverrideChange,
+  onArtSheetsManualRawChange,
+  artSheetOptions,
+  artSheetKeyOverride,
+  onArtSheetKeyChange,
 }: {
   item: CostLineResult;
   quantity: number | null;
+  artSheetsOverride?: boolean;
+  artSheetsManualRaw?: string;
+  onArtSheetsOverrideChange?: (v: boolean) => void;
+  onArtSheetsManualRawChange?: (v: string) => void;
+  artSheetOptions?: {
+    key: string;
+    width: number;
+    height: number;
+    piecesPerSheet: number;
+    wastagePercent: number;
+    isRecommended: boolean;
+  }[];
+  artSheetKeyOverride?: string | null;
+  onArtSheetKeyChange?: (key: string | null) => void;
 }) {
   const meta = item.meta ?? {};
   const isArt = meta.paperType === "art";
   const isExcluded = !!item.excluded;
+  const autoSheets = Number(meta.autoSheetsRequired ?? meta.piecesRequired ?? 0);
+  const canEditSheets =
+    isArt &&
+    !isExcluded &&
+    onArtSheetsOverrideChange != null &&
+    onArtSheetsManualRawChange != null;
+  const sheetsOverride = !!artSheetsOverride;
+  const canPickSheet =
+    isArt &&
+    !isExcluded &&
+    onArtSheetKeyChange != null &&
+    (artSheetOptions?.length ?? 0) > 0;
+  const selectValue = artSheetKeyOverride ?? "auto";
 
   return (
     <Card
@@ -186,11 +237,44 @@ function PaperCard({
               {formatLength(Number(meta.artHeightIn), "in")} in
             </p>
           </div>
-          <div>
-            <p className="text-gray-600">Sheet used</p>
-            <p className="text-gray-300 mt-0.5 tabular-nums">
-              {meta.sheetWidth}×{meta.sheetHeight} in
-            </p>
+          <div className={canPickSheet ? "col-span-2 sm:col-span-2" : undefined}>
+            <p className="text-gray-600 mb-1">Sheet used</p>
+            {canPickSheet ? (
+              <>
+                <select
+                  value={selectValue}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    onArtSheetKeyChange!(v === "auto" ? null : v);
+                  }}
+                  className={inputCls}
+                >
+                  {(() => {
+                    const best = artSheetOptions!.find((o) => o.isRecommended);
+                    return (
+                      <option value="auto">
+                        Auto — recommended
+                        {best ? ` (${best.width}×${best.height})` : ""}
+                      </option>
+                    );
+                  })()}
+                  {artSheetOptions!.map((o) => (
+                    <option key={o.key} value={o.key}>
+                      {o.width}×{o.height} in · {o.piecesPerSheet} pcs/sheet ·{" "}
+                      {o.wastagePercent.toFixed(1)}% waste
+                      {o.isRecommended ? " (best)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[10px] text-gray-600">
+                  Changes paper, lamination, and all sheet-based costs
+                </p>
+              </>
+            ) : (
+              <p className="text-gray-300 mt-0.5 tabular-nums">
+                {meta.sheetWidth}×{meta.sheetHeight} in
+              </p>
+            )}
           </div>
           <div>
             <p className="text-gray-600">Pieces / sheet</p>
@@ -219,11 +303,58 @@ function PaperCard({
               {meta.printSides === "double" ? "× 2 sides" : ""}
             </p>
           </div>
-          <div>
-            <p className="text-gray-600">Total pieces required</p>
-            <p className="text-gray-300 mt-0.5 tabular-nums">
-              {Number(meta.piecesRequired ?? 0).toLocaleString("en-US")}
-            </p>
+          <div className="col-span-2 sm:col-span-1">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <p className="text-gray-600">Total sheets required</p>
+              {canEditSheets && sheetsOverride && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onArtSheetsOverrideChange!(false);
+                    onArtSheetsManualRawChange!("");
+                  }}
+                  className="text-[10px] text-sky-400 hover:text-sky-300"
+                >
+                  Use auto
+                </button>
+              )}
+            </div>
+            {canEditSheets ? (
+              <>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  step="1"
+                  min="1"
+                  value={
+                    sheetsOverride
+                      ? (artSheetsManualRaw ?? "")
+                      : String(autoSheets || "")
+                  }
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (!sheetsOverride) onArtSheetsOverrideChange!(true);
+                    onArtSheetsManualRawChange!(raw);
+                  }}
+                  onFocus={() => {
+                    if (!sheetsOverride) {
+                      onArtSheetsOverrideChange!(true);
+                      onArtSheetsManualRawChange!(String(autoSheets || ""));
+                    }
+                  }}
+                  className={inputCls}
+                />
+                <p className="mt-1 text-[10px] text-gray-600">
+                  {sheetsOverride
+                    ? `Auto would be ${autoSheets.toLocaleString("en-US")}`
+                    : "Editable — change to override cost"}
+                </p>
+              </>
+            ) : (
+              <p className="text-gray-300 mt-0.5 tabular-nums">
+                {Number(meta.piecesRequired ?? 0).toLocaleString("en-US")}
+              </p>
+            )}
           </div>
           <div>
             <p className="text-gray-600">Physical sheets</p>
@@ -840,6 +971,13 @@ export function CostCalculation({
   profitRatio,
   clientName,
   onDownloadPdf,
+  artSheetsOverride,
+  artSheetsManualRaw,
+  onArtSheetsOverrideChange,
+  onArtSheetsManualRawChange,
+  artSheetOptions,
+  artSheetKeyOverride,
+  onArtSheetKeyChange,
 }: Props) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -1613,7 +1751,19 @@ export function CostCalculation({
           </Card>
         )}
 
-        {paper && <PaperCard item={paper} quantity={quantity} />}
+        {paper && (
+          <PaperCard
+            item={paper}
+            quantity={quantity}
+            artSheetsOverride={artSheetsOverride}
+            artSheetsManualRaw={artSheetsManualRaw}
+            onArtSheetsOverrideChange={onArtSheetsOverrideChange}
+            onArtSheetsManualRawChange={onArtSheetsManualRawChange}
+            artSheetOptions={artSheetOptions}
+            artSheetKeyOverride={artSheetKeyOverride}
+            onArtSheetKeyChange={onArtSheetKeyChange}
+          />
+        )}
         {lamination && <LaminationCard item={lamination} />}
         {spotUv && spotUvEnabled && (
           <SpotUvCard

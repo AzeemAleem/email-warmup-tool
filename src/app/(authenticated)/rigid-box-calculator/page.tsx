@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ClipboardDocumentIcon,
   ArrowPathIcon,
@@ -29,6 +29,7 @@ import { parseFoilingTotal } from "@/lib/cost/items/foilingCost";
 import { parseLaborTotal } from "@/lib/cost/items/laborCost";
 import { parsePlatesTotal } from "@/lib/cost/items/platesCost";
 import { parsePrintingTotal } from "@/lib/cost/items/printingCost";
+import { parseArtSheetsRequired } from "@/lib/cost/items/artPaperCost";
 import { parseExtraTotal } from "@/lib/cost/items/extraCost";
 import { parseSpotUvTotal } from "@/lib/cost/items/spotUvCost";
 import type {
@@ -51,6 +52,7 @@ import {
   DEFAULT_ART_PADDING_H_IN,
   DEFAULT_ART_PADDING_W_IN,
 } from "@/lib/rigidSheetSizes";
+import { sheetKey } from "@/lib/sheetSizes";
 import { recommendBestSheet } from "@/lib/sheetNesting";
 
 const UNITS: LengthUnit[] = ["mm", "cm", "in"];
@@ -165,6 +167,12 @@ export default function RigidBoxCalculatorPage() {
   const [profitRatioRaw, setProfitRatioRaw] = useState("");
   const [extraRaw, setExtraRaw] = useState("");
   const [clientName, setClientName] = useState("");
+  const [artSheetsOverride, setArtSheetsOverride] = useState(false);
+  const [artSheetsManualRaw, setArtSheetsManualRaw] = useState("");
+  /** null = auto recommended sheet; otherwise "30x50" etc. */
+  const [artSheetKeyOverride, setArtSheetKeyOverride] = useState<string | null>(
+    null,
+  );
   const [paperType, setPaperType] = useState<PaperType>("art");
   const [printSides, setPrintSides] = useState<PrintSides>("double");
   const [printColorMode, setPrintColorMode] =
@@ -264,6 +272,8 @@ export default function RigidBoxCalculatorPage() {
     return n;
   })();
   const extraTotal = parseExtraTotal(extraRaw);
+  const artSheetsRequiredManual =
+    artSheetsOverride ? parseArtSheetsRequired(artSheetsManualRaw) : null;
 
   const result: RigidBoxResultAllUnits | null = useMemo(() => {
     if (L == null || W == null || H == null) return null;
@@ -295,15 +305,52 @@ export default function RigidBoxCalculatorPage() {
     return recommendBestSheet(artPiece, ART_PAPER_SHEETS);
   }, [artPiece]);
 
-  const artSheetSelection = useMemo(() => {
-    if (!artRecommendation?.recommended) return null;
-    const rec = artRecommendation.recommended;
-    return {
-      width: rec.sheet.width,
-      height: rec.sheet.height,
-      piecesPerSheet: rec.pieces,
-    };
+  // Drop manual sheet if it no longer fits after size/padding change
+  useEffect(() => {
+    if (!artSheetKeyOverride || !artRecommendation) {
+      if (!artRecommendation) setArtSheetKeyOverride(null);
+      return;
+    }
+    const stillFits = artRecommendation.allResults.some(
+      (r) => r.fits && sheetKey(r.sheet) === artSheetKeyOverride,
+    );
+    if (!stillFits) setArtSheetKeyOverride(null);
+  }, [artRecommendation, artSheetKeyOverride]);
+
+  const artSheetOptions = useMemo(() => {
+    if (!artRecommendation) return [];
+    return artRecommendation.allResults
+      .filter((r) => r.fits)
+      .map((r) => ({
+        key: sheetKey(r.sheet),
+        width: r.sheet.width,
+        height: r.sheet.height,
+        piecesPerSheet: r.pieces,
+        wastagePercent: r.wastagePercent,
+        isRecommended:
+          artRecommendation.recommended != null &&
+          sheetKey(artRecommendation.recommended.sheet) === sheetKey(r.sheet),
+      }));
   }, [artRecommendation]);
+
+  const artSheetSelection = useMemo(() => {
+    if (!artRecommendation) return null;
+
+    let nest = artRecommendation.recommended;
+    if (artSheetKeyOverride) {
+      const found = artRecommendation.allResults.find(
+        (r) => r.fits && sheetKey(r.sheet) === artSheetKeyOverride,
+      );
+      if (found) nest = found;
+    }
+    if (!nest) return null;
+
+    return {
+      width: nest.sheet.width,
+      height: nest.sheet.height,
+      piecesPerSheet: nest.pieces,
+    };
+  }, [artRecommendation, artSheetKeyOverride]);
 
   const spotUvManualTotal = useMemo(() => {
     if (!spotUvEnabled) return null;
@@ -390,6 +437,7 @@ export default function RigidBoxCalculatorPage() {
         embossingEnabled,
         embossingManualTotal,
         extraTotal,
+        artSheetsRequiredManual,
       },
     );
   }, [
@@ -420,6 +468,7 @@ export default function RigidBoxCalculatorPage() {
     embossingEnabled,
     embossingManualTotal,
     extraTotal,
+    artSheetsRequiredManual,
   ]);
 
   const errors = {
@@ -455,6 +504,9 @@ export default function RigidBoxCalculatorPage() {
     setProfitRatioRaw("");
     setExtraRaw("");
     setClientName("");
+    setArtSheetsOverride(false);
+    setArtSheetsManualRaw("");
+    setArtSheetKeyOverride(null);
     setPaperType("art");
     setPrintSides("double");
     setPrintColorMode("cmyk");
@@ -1092,6 +1144,13 @@ export default function RigidBoxCalculatorPage() {
             config={costConfig}
             onConfigChange={setCostConfig}
             profitRatio={profitRatio}
+            artSheetsOverride={artSheetsOverride}
+            artSheetsManualRaw={artSheetsManualRaw}
+            onArtSheetsOverrideChange={setArtSheetsOverride}
+            onArtSheetsManualRawChange={setArtSheetsManualRaw}
+            artSheetOptions={artSheetOptions}
+            artSheetKeyOverride={artSheetKeyOverride}
+            onArtSheetKeyChange={setArtSheetKeyOverride}
             clientName={clientName}
             onDownloadPdf={() =>
               downloadRigidCostPdf({
@@ -1175,6 +1234,8 @@ export default function RigidBoxCalculatorPage() {
             mode="flat"
             nestingSizeLabel="Required art paper size"
             tableTitle="Art Paper sheets"
+            costSheetKey={artSheetKeyOverride}
+            onCostSheetChange={setArtSheetKeyOverride}
           />
         </Card>
       )}

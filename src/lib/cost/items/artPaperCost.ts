@@ -9,7 +9,11 @@ export interface ArtPaperCostResult {
   sidesMultiplier: number;
   /** Pieces for one print side (quantity + fixed extra wastage) */
   piecesPerSide: number;
+  /** Sheets used for costing (manual override or automatic) */
   piecesRequired: number;
+  /** Automatic sheets required before any manual override */
+  autoPiecesRequired: number;
+  usedManualSheetsRequired: boolean;
   physicalSheets: number;
   total: number;
   sheetWidth: number;
@@ -86,11 +90,21 @@ export function calcArtPiecesRequired(
   return Number.isFinite(pieces) ? pieces : null;
 }
 
+/** Parse manual total sheets required. Empty → null. */
+export function parseArtSheetsRequired(raw: string): number | null {
+  if (raw.trim() === "") return null;
+  const n = Number(raw.trim());
+  if (!Number.isFinite(n) || n < 1 || !Number.isInteger(n)) return null;
+  return n;
+}
+
 export function calcArtPaperCost(
   artSheet: ArtSheetSelection,
   quantity: number,
   printSides: PrintSides,
   config: ArtPaperConfig,
+  /** When set, replaces auto piecesRequired (total sheets required). */
+  sheetsRequiredManual: number | null = null,
 ): ArtPaperCostResult | null {
   if (!Number.isInteger(quantity) || quantity < 1) return null;
   if (!(artSheet.piecesPerSheet >= 1)) return null;
@@ -110,12 +124,20 @@ export function calcArtPaperCost(
   if (perUnitSheetCost == null) return null;
 
   const piecesPerSide = calcArtPiecesPerSide(quantity, config.extraSheets);
-  const piecesRequired = calcArtPiecesRequired(
+  const autoPiecesRequired = calcArtPiecesRequired(
     quantity,
     printSides,
     config.extraSheets,
   );
-  if (piecesPerSide == null || piecesRequired == null) return null;
+  if (piecesPerSide == null || autoPiecesRequired == null) return null;
+
+  const usedManualSheetsRequired =
+    sheetsRequiredManual != null &&
+    Number.isInteger(sheetsRequiredManual) &&
+    sheetsRequiredManual >= 1;
+  const piecesRequired = usedManualSheetsRequired
+    ? sheetsRequiredManual!
+    : autoPiecesRequired;
 
   const total = roundMoney(perUnitSheetCost * piecesRequired);
   if (!Number.isFinite(total)) return null;
@@ -131,6 +153,8 @@ export function calcArtPaperCost(
     sidesMultiplier: sidesMultiplier(printSides),
     piecesPerSide,
     piecesRequired,
+    autoPiecesRequired,
+    usedManualSheetsRequired,
     physicalSheets,
     total,
     sheetWidth: artSheet.width,

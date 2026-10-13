@@ -39,6 +39,12 @@ interface Props {
   nestingSizeLabel?: string;
   /** Table title in flat mode */
   tableTitle?: string;
+  /**
+   * When provided, row clicks on fitting sheets drive cost calculation.
+   * `null` = use automatic recommended sheet.
+   */
+  costSheetKey?: string | null;
+  onCostSheetChange?: (key: string | null) => void;
 }
 
 function wastageColor(pct: number): string {
@@ -167,6 +173,9 @@ function SheetTable({
   onSelect,
   secondary,
   showBatch,
+  costSheetKey,
+  costSelectionEnabled,
+  onCostSheetChange,
 }: {
   title: string;
   results: SheetNestResult[];
@@ -177,6 +186,9 @@ function SheetTable({
   onSelect: (r: SheetNestResult) => void;
   secondary?: boolean;
   showBatch: boolean;
+  costSheetKey?: string | null;
+  costSelectionEnabled?: boolean;
+  onCostSheetChange?: (key: string | null) => void;
 }) {
   const sorted = useMemo(
     () => sortNestResults([...results], sortMode),
@@ -252,20 +264,32 @@ function SheetTable({
               const key = sheetKey(r.sheet);
               const isBest = recommendedKey === key;
               const isSelected = selectedKey === key;
+              const isCostActive =
+                !!costSelectionEnabled &&
+                (costSheetKey != null
+                  ? costSheetKey === key
+                  : isBest);
               return (
                 <tr
                   key={key}
-                  onClick={() => onSelect(r)}
+                  onClick={() => {
+                    onSelect(r);
+                    if (costSelectionEnabled && r.fits && onCostSheetChange) {
+                      // Choosing the recommended sheet returns to auto mode
+                      onCostSheetChange(isBest ? null : key);
+                    }
+                  }}
                   className={clsx(
                     "cursor-pointer transition-colors",
                     !r.fits && "bg-red-500/5",
                     isBest && "bg-indigo-500/10",
-                    isSelected && "ring-1 ring-inset ring-indigo-500/40",
-                    r.fits && !isBest && "hover:bg-gray-800/50",
+                    isCostActive && "bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/40",
+                    isSelected && !isCostActive && "ring-1 ring-inset ring-indigo-500/40",
+                    r.fits && !isBest && !isCostActive && "hover:bg-gray-800/50",
                   )}
                 >
                   <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <SheetSizeLabel
                         width={r.sheet.width}
                         height={r.sheet.height}
@@ -274,6 +298,11 @@ function SheetTable({
                       {isBest && (
                         <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-600 text-white">
                           Best
+                        </span>
+                      )}
+                      {isCostActive && (
+                        <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-600 text-white">
+                          In use
                         </span>
                       )}
                     </div>
@@ -304,7 +333,13 @@ function SheetTable({
                   </td>
                   <td className="px-3 py-2.5 text-xs">
                     {r.fits ? (
-                      <span className="text-emerald-400">Fits</span>
+                      <span className="text-emerald-400">
+                        {costSelectionEnabled
+                          ? isCostActive
+                            ? "Used for cost"
+                            : "Click to use"
+                          : "Fits"}
+                      </span>
                     ) : (
                       <span className="text-red-400 font-medium">Does not fit</span>
                     )}
@@ -329,10 +364,13 @@ export function SheetOptimization({
   mode = "batches",
   nestingSizeLabel = "Nesting size",
   tableTitle = "Art Paper sheets",
+  costSheetKey = null,
+  onCostSheetChange,
 }: Props) {
   const [sortMode, setSortMode] = useState<NestSortMode>("wastage");
   const [outExpanded, setOutExpanded] = useState(false);
   const [selected, setSelected] = useState<SheetNestResult | null>(null);
+  const costSelectionEnabled = onCostSheetChange != null;
 
   const nestingW = openWidthIn + paddingWIn;
   const nestingH = openHeightIn + paddingHIn;
@@ -367,7 +405,30 @@ export function SheetOptimization({
     ? sheetKey(recommendation.recommended.sheet)
     : null;
 
-  const previewResult = selected ?? recommendation.recommended ?? null;
+  const activeCostNest = useMemo(() => {
+    if (!costSelectionEnabled) return recommendation.recommended ?? null;
+    if (costSheetKey) {
+      const found = recommendation.allResults.find(
+        (r) => r.fits && sheetKey(r.sheet) === costSheetKey,
+      );
+      if (found) return found;
+    }
+    return recommendation.recommended ?? null;
+  }, [
+    costSelectionEnabled,
+    costSheetKey,
+    recommendation.allResults,
+    recommendation.recommended,
+  ]);
+
+  const previewResult =
+    selected ?? activeCostNest ?? recommendation.recommended ?? null;
+
+  const usingManualCostSheet =
+    costSelectionEnabled &&
+    costSheetKey != null &&
+    recommendedKey != null &&
+    costSheetKey !== recommendedKey;
 
   const highestDiffers =
     recommendation.highestPieceCount &&
@@ -392,6 +453,14 @@ export function SheetOptimization({
               (open + {paddingWIn}×{paddingHIn} in padding)
             </span>
           </p>
+          {costSelectionEnabled && (
+            <p className="text-[11px] text-emerald-400/90 mt-1">
+              Click any fitting sheet to use it for paper, lamination, and cost.
+              {usingManualCostSheet && activeCostNest
+                ? ` Currently using ${activeCostNest.sheet.width}×${activeCostNest.sheet.height} in (manual).`
+                : " Currently using auto-recommended sheet."}
+            </p>
+          )}
         </div>
         <div className="self-start">
           <p className="text-[10px] text-gray-600 mb-1 uppercase tracking-wide">
@@ -460,6 +529,11 @@ export function SheetOptimization({
                 <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-600 text-white">
                   Best
                 </span>
+                {costSelectionEnabled && !usingManualCostSheet && (
+                  <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-600 text-white">
+                    In use
+                  </span>
+                )}
               </div>
               <p className="text-sm text-gray-300 mt-2">
                 <span className="text-2xl font-bold text-indigo-300 tabular-nums">
@@ -488,13 +562,24 @@ export function SheetOptimization({
                 </p>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => setSelected(recommendation.recommended)}
-              className="text-xs text-indigo-400 hover:text-indigo-300 underline underline-offset-2"
-            >
-              Show nest preview
-            </button>
+            <div className="flex flex-col items-end gap-2">
+              <button
+                type="button"
+                onClick={() => setSelected(recommendation.recommended)}
+                className="text-xs text-indigo-400 hover:text-indigo-300 underline underline-offset-2"
+              >
+                Show nest preview
+              </button>
+              {costSelectionEnabled && usingManualCostSheet && (
+                <button
+                  type="button"
+                  onClick={() => onCostSheetChange?.(null)}
+                  className="text-xs font-medium text-emerald-400 hover:text-emerald-300 underline underline-offset-2"
+                >
+                  Use recommended for cost
+                </button>
+              )}
+            </div>
           </div>
         </Card>
       ) : null}
@@ -513,6 +598,9 @@ export function SheetOptimization({
           selectedKey={selected ? sheetKey(selected.sheet) : null}
           onSelect={setSelected}
           showBatch={false}
+          costSheetKey={costSheetKey}
+          costSelectionEnabled={costSelectionEnabled}
+          onCostSheetChange={onCostSheetChange}
         />
       ) : (
         <>

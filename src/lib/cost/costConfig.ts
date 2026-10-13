@@ -95,7 +95,7 @@ export interface CostConfig {
 }
 
 export const DEFAULT_GREYBOARD_CONFIG: Readonly<GreyboardConfig> = {
-  gsm: 1400,
+  gsm: 1200,
   factor: 400,
   divisor: 15500,
   scale: 100,

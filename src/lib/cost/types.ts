@@ -54,6 +54,11 @@ export interface CostContext {
   embossingManualTotal: number | null;
   /** Optional lump-sum extra expenses (PKR); null/0 = omitted */
   extraTotal: number | null;
+  /**
+   * Manual override for Art Paper total sheets required.
+   * null = use automatic (sides × (qty + extra)).
+   */
+  artSheetsRequiredManual: number | null;
 }
 
 export interface CostLineResult {

@@ -73,10 +73,10 @@ function ship12x27(qty: number): number {
 
 // ── rigid art paper sheets ─────────────────────────────────────────────────
 assertRigidSheetDataIntegrity();
-assert.equal(ART_PAPER_SHEETS.length, 4);
+assert.equal(ART_PAPER_SHEETS.length, 6);
 assert.deepEqual(
   ART_PAPER_SHEETS.map((s) => `${s.width}x${s.height}`),
-  ["20x30", "23x36", "25x36", "30x40"],
+  ["20x30", "23x36", "25x36", "30x40", "30x50", "40x60"],
 );
 assert.equal(DEFAULT_ART_PADDING_W_IN, 2);
 assert.equal(DEFAULT_ART_PADDING_H_IN, 2);
@@ -94,13 +94,14 @@ assert.ok(ALL_SHEETS.length > 4);
 
   const piece = { widthIn: artW, heightIn: artH };
   const counts = ART_PAPER_SHEETS.map((s) => nestPieceOnSheet(s, piece).pieces);
-  assert.deepEqual(counts, [1, 1, 1, 2]);
+  assert.deepEqual(counts, [1, 1, 1, 2, 3, 4]);
 
   const rec = recommendBestSheet(piece, ART_PAPER_SHEETS);
   assert.ok(rec.recommended);
+  // Lowest wastage wins: 30×50 (3 pcs, ~18.8%) beats 30×40 (2 pcs, ~32.3%)
   assert.equal(rec.recommended!.sheet.width, 30);
-  assert.equal(rec.recommended!.sheet.height, 40);
-  assert.equal(rec.recommended!.pieces, 2);
+  assert.equal(rec.recommended!.sheet.height, 50);
+  assert.equal(rec.recommended!.pieces, 3);
 
   // Tie: 20×30 (1 pc) must lose to 30×40 (2 pcs) at equal wastage
   const r20 = nestPieceOnSheet(ART_PAPER_SHEETS[0], piece);
@@ -123,7 +124,7 @@ assert.ok(ALL_SHEETS.length > 4);
 // ── greyboard verified per-unit ────────────────────────────────────────────
 {
   const per = calcGreyboardPerUnit(12, 27, DEFAULT_COST_CONFIG.greyboard);
-  assert.equal(per, 146.32);
+  assert.equal(per, 125.42);
 }
 
 {
@@ -132,7 +133,7 @@ assert.ok(ALL_SHEETS.length > 4);
     artSheet: sheet30x40,
   });
   assert.ok(r);
-  assert.equal(r!.items.find((i) => i.id === "greyboard")!.perUnit, 146.32);
+  assert.equal(r!.items.find((i) => i.id === "greyboard")!.perUnit, 125.42);
 }
 
 {
@@ -142,9 +143,9 @@ assert.ok(ALL_SHEETS.length > 4);
     artSheet: null,
   });
   assert.ok(r);
-  assert.equal(r!.items.find((i) => i.id === "greyboard")!.total, 29264);
+  assert.equal(r!.items.find((i) => i.id === "greyboard")!.total, 25084);
   assert.equal(r!.items.find((i) => i.id === "paper")!.excluded, true);
-  assert.equal(r!.grandTotal, roundMoney(29264 + ship12x27(200)));
+  assert.equal(r!.grandTotal, roundMoney(25084 + ship12x27(200)));
 }
 
 // ── art paper sheet cost ───────────────────────────────────────────────────
@@ -246,10 +247,10 @@ assert.ok(ALL_SHEETS.length > 4);
     artPaddingHIn: 2,
   });
   assert.ok(r);
-  assert.equal(r!.items.find((i) => i.id === "greyboard")!.total, 29264);
+  assert.equal(r!.items.find((i) => i.id === "greyboard")!.total, 25084);
   assert.equal(r!.items.find((i) => i.id === "paper")!.total, 29032);
   assert.equal(r!.items.find((i) => i.id === "paper")!.label, "Paper (Art Paper)");
-  assert.equal(r!.grandTotal, roundMoney(58296 + ship12x27(200)));
+  assert.equal(r!.grandTotal, roundMoney(54116 + ship12x27(200)));
   assert.deepEqual(registeredCostItemIds(), [
     "greyboard",
     "paper",
@@ -275,9 +276,9 @@ assert.ok(ALL_SHEETS.length > 4);
     artSheet: sheet30x40,
   });
   assert.ok(r);
-  assert.equal(r!.items.find((i) => i.id === "greyboard")!.total, 73160);
+  assert.equal(r!.items.find((i) => i.id === "greyboard")!.total, 62710);
   assert.equal(r!.items.find((i) => i.id === "paper")!.total, 50806);
-  assert.equal(r!.grandTotal, roundMoney(123966 + ship12x27(500)));
+  assert.equal(r!.grandTotal, roundMoney(113516 + ship12x27(500)));
 }
 
 // ── morocco engine; print sides has no effect ──────────────────────────────
@@ -298,7 +299,7 @@ assert.ok(ALL_SHEETS.length > 4);
   assert.equal(base!.grandTotal, single!.grandTotal);
   assert.equal(base!.items.find((i) => i.id === "paper")!.total, 21482);
   assert.equal(base!.items.find((i) => i.id === "paper")!.label, "Paper (Morocco)");
-  assert.equal(base!.grandTotal, roundMoney(29264 + 21482 + ship12x27(200)));
+  assert.equal(base!.grandTotal, roundMoney(25084 + 21482 + ship12x27(200)));
 }
 
 // ── same cost from mm / cm / in ────────────────────────────────────────────
@@ -346,7 +347,7 @@ assert.ok(ALL_SHEETS.length > 4);
   assert.ok(costIn && costMm && costCm);
   assert.equal(costIn!.grandTotal, costMm!.grandTotal);
   assert.equal(costIn!.grandTotal, costCm!.grandTotal);
-  assert.equal(costIn!.grandTotal, roundMoney(58296 + ship12x27(200)));
+  assert.equal(costIn!.grandTotal, roundMoney(54116 + ship12x27(200)));
 }
 
 // ── changing art constants changes result ──────────────────────────────────
@@ -488,7 +489,7 @@ assert.equal(
   });
   assert.ok(r);
   assert.equal(r!.items.find((i) => i.id === "lamination")!.total, 33336);
-  assert.equal(r!.grandTotal, roundMoney(29264 + 29032 + 33336 + ship12x27(200)));
+  assert.equal(r!.grandTotal, roundMoney(25084 + 29032 + 33336 + ship12x27(200)));
 }
 
 // ── Spot UV ────────────────────────────────────────────────────────────────
@@ -524,7 +525,7 @@ assert.equal(
   });
   assert.ok(r);
   assert.equal(r!.items.find((i) => i.id === "spotUv")!.total, 10000);
-  assert.equal(r!.grandTotal, roundMoney(29264 + 29032 + 10000 + ship12x27(200)));
+  assert.equal(r!.grandTotal, roundMoney(25084 + 29032 + 10000 + ship12x27(200)));
 }
 
 {
@@ -539,7 +540,7 @@ assert.equal(
   const uv = missing!.items.find((i) => i.id === "spotUv")!;
   assert.equal(uv.excluded, true);
   assert.equal(uv.warning, "Enter Spot UV cost");
-  assert.equal(missing!.grandTotal, roundMoney(73160 + 50806 + ship12x27(500)));
+  assert.equal(missing!.grandTotal, roundMoney(62710 + 50806 + ship12x27(500)));
 
   const withManual = runCostEngine(open12x27, 500, DEFAULT_COST_CONFIG, {
     paperType: "art",
@@ -552,7 +553,7 @@ assert.equal(
   assert.equal(withManual!.items.find((i) => i.id === "spotUv")!.total, 18000);
   assert.equal(
     withManual!.grandTotal,
-    roundMoney(73160 + 50806 + 18000 + ship12x27(500)),
+    roundMoney(62710 + 50806 + 18000 + ship12x27(500)),
   );
 }
 
@@ -592,7 +593,7 @@ assert.equal(
   });
   assert.ok(r);
   assert.equal(r!.items.find((i) => i.id === "die")!.total, 5000);
-  assert.equal(r!.grandTotal, roundMoney(29264 + 29032 + 5000 + ship12x27(200)));
+  assert.equal(r!.grandTotal, roundMoney(25084 + 29032 + 5000 + ship12x27(200)));
 }
 
 {
@@ -605,7 +606,7 @@ assert.equal(
   });
   assert.ok(r);
   assert.equal(r!.items.find((i) => i.id === "die")!.total, 8000);
-  assert.equal(r!.grandTotal, roundMoney(29264 + 29032 + 8000 + ship12x27(200)));
+  assert.equal(r!.grandTotal, roundMoney(25084 + 29032 + 8000 + ship12x27(200)));
 }
 
 {
@@ -709,7 +710,7 @@ assert.equal(
   assert.equal(r!.items.find((i) => i.id === "plates")!.total, 16000);
   assert.equal(
     r!.grandTotal,
-    roundMoney(29264 + 29032 + 24000 + 16000 + ship12x27(200)),
+    roundMoney(25084 + 29032 + 24000 + 16000 + ship12x27(200)),
   );
 }
 
@@ -753,7 +754,7 @@ assert.equal(
   assert.ok(labor);
   const gb = labor!.items.find((i) => i.id === "greyboard")!.total;
   assert.equal(labor!.items.find((i) => i.id === "labor")!.total, gb);
-  assert.equal(gb, 29264);
+  assert.equal(gb, 25084);
 
   const laborOverride = runCostEngine(open12x27, 200, DEFAULT_COST_CONFIG, {
     paperType: "art",
@@ -863,7 +864,7 @@ assert.equal(
   assert.equal(line.perUnit, 25);
   assert.equal(
     withExtra!.grandTotal,
-    roundMoney(58296 + ship12x27(200) + 5000),
+    roundMoney(54116 + ship12x27(200) + 5000),
   );
 
   const none = runCostEngine(open12x27, 200, DEFAULT_COST_CONFIG, {
@@ -872,6 +873,47 @@ assert.equal(
     extraTotal: null,
   });
   assert.equal(none!.items.find((i) => i.id === "extra"), undefined);
+}
+
+// ── Art paper: manual total sheets required override ───────────────────────
+{
+  const auto = calcArtPaperCost(
+    sheet30x40,
+    200,
+    "double",
+    DEFAULT_COST_CONFIG.artPaper,
+  )!;
+  assert.equal(auto.piecesRequired, 800); // 2 × (200 + 200)
+  assert.equal(auto.usedManualSheetsRequired, false);
+
+  const manual = calcArtPaperCost(
+    sheet30x40,
+    200,
+    "double",
+    DEFAULT_COST_CONFIG.artPaper,
+    1000,
+  )!;
+  assert.equal(manual.autoPiecesRequired, 800);
+  assert.equal(manual.piecesRequired, 1000);
+  assert.equal(manual.usedManualSheetsRequired, true);
+  assert.equal(
+    manual.total,
+    roundMoney(manual.perUnitSheetCost * 1000),
+  );
+  assert.ok(manual.total > auto.total);
+
+  const engine = runCostEngine(open12x27, 200, DEFAULT_COST_CONFIG, {
+    paperType: "art",
+    printSides: "double",
+    artSheet: sheet30x40,
+    artSheetsRequiredManual: 1000,
+  });
+  assert.ok(engine);
+  const paper = engine!.items.find((i) => i.id === "paper")!;
+  assert.equal(paper.total, manual.total);
+  assert.equal(paper.meta?.sheetsRequiredManual, true);
+  assert.equal(paper.meta?.autoSheetsRequired, 800);
+  assert.equal(paper.meta?.piecesRequired, 1000);
 }
 
 console.log("All rigid box cost tests passed.");

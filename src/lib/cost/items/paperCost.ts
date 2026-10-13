@@ -27,6 +27,7 @@ export const paperCostItem: CostItemModule = {
       artSheet,
       artPaddingWIn,
       artPaddingHIn,
+      artSheetsRequiredManual,
     } = ctx;
 
     if (!Number.isInteger(quantity) || quantity < 1) return null;
@@ -107,6 +108,7 @@ export const paperCostItem: CostItemModule = {
       quantity,
       printSides,
       config.artPaper,
+      artSheetsRequiredManual,
     );
     if (!art) return null;
 
@@ -128,6 +130,8 @@ export const paperCostItem: CostItemModule = {
         printSides,
         piecesPerSide: art.piecesPerSide,
         piecesRequired: art.piecesRequired,
+        autoSheetsRequired: art.autoPiecesRequired,
+        sheetsRequiredManual: art.usedManualSheetsRequired,
         physicalSheets: art.physicalSheets,
         extraSheets: config.artPaper.extraSheets,
         gsm: config.artPaper.gsm,
