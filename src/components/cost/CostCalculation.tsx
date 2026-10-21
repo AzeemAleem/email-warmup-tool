@@ -35,18 +35,18 @@ import {
   type PlatesConfig,
   type PrintingConfig,
   type ShippingConfig,
+  type ShippingWeightMode,
   type SpotUvConfig,
   type WeightConfig,
 } from "@/lib/cost/costConfig";
 import {
   formatPkr,
   formatPkrTotal,
-  formatUsd,
-  pkrToUsd,
   roundMoney,
 } from "@/lib/cost/currency";
 import type { CostEngineResult, CostLineResult } from "@/lib/cost/types";
 import { formatLength } from "@/lib/lengthUnits";
+import { CostTotalsSummary } from "@/components/cost/CostTotalsSummary";
 
 interface OverrideControls {
   enabled?: boolean;
@@ -110,6 +110,8 @@ interface Props {
   /** null = auto recommended */
   artSheetKeyOverride?: string | null;
   onArtSheetKeyChange?: (key: string | null) => void;
+  /** Hide inline totals when shown in an external sticky panel */
+  hideTotals?: boolean;
 }
 
 const inputCls =
@@ -198,14 +200,14 @@ function PaperCard({
       className={clsx(
         isExcluded
           ? "border-red-500/30 bg-red-500/5"
-          : "border-sky-500/20 bg-sky-500/5",
+          : "border-pacify-silver/25 bg-pacify-silver/5",
       )}
     >
       <div className="flex items-start justify-between gap-3 mb-3">
         <h3
           className={clsx(
             "text-sm font-semibold",
-            isExcluded ? "text-red-200" : "text-sky-200",
+            isExcluded ? "text-red-200" : "text-pacify-silver",
           )}
         >
           {item.label}
@@ -313,7 +315,7 @@ function PaperCard({
                     onArtSheetsOverrideChange!(false);
                     onArtSheetsManualRawChange!("");
                   }}
-                  className="text-[10px] text-sky-400 hover:text-sky-300"
+                  className="text-[10px] text-pacify-gold hover:text-pacify-gold/80"
                 >
                   Use auto
                 </button>
@@ -520,66 +522,59 @@ function SpotUvCard({
   onSpotUvManualRawChange?: (v: string) => void;
 }) {
   const meta = item.meta ?? {};
-  const isExcluded = !!item.excluded;
   const qty = quantity ?? 0;
-  const needsManual =
-    qty > config.spotUv.fixedMaxQty || !!spotUvOverride;
-  const canAuto = qty > 0 && qty <= config.spotUv.fixedMaxQty;
+  const tier =
+    meta.tier === "mid" || meta.tier === "high" || meta.tier === "fixed"
+      ? meta.tier
+      : "fixed";
+  const autoHint =
+    tier === "fixed"
+      ? formatPkrTotal(config.spotUv.fixedCost)
+      : tier === "mid"
+        ? `${config.spotUv.midRatePerUnit} / unit`
+        : `${config.spotUv.highRatePerUnit} / unit`;
 
   return (
-    <Card
-      className={clsx(
-        isExcluded
-          ? "border-red-500/30 bg-red-500/5"
-          : "border-violet-500/20 bg-violet-500/5",
-      )}
-    >
+    <Card className="border-violet-500/20 bg-violet-500/5">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2">
-          <h3
-            className={clsx(
-              "text-sm font-semibold",
-              isExcluded ? "text-red-200" : "text-violet-200",
-            )}
-          >
-            Spot UV
-          </h3>
+          <h3 className="text-sm font-semibold text-violet-200">Spot UV</h3>
           <EstimateBadge />
         </div>
         <span className="text-sm font-bold text-white tabular-nums">
-          {isExcluded
-            ? item.warning ?? "N/A"
-            : formatPkrTotal(item.total)}
+          {formatPkrTotal(item.total)}
         </span>
       </div>
 
       <div className="space-y-3">
-        {!isExcluded && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-            <div>
-              <p className="text-gray-600">Mode</p>
-              <p className="text-gray-300 mt-0.5">
-                {meta.usedAutomatic
-                  ? `Automatic (≤ ${config.spotUv.fixedMaxQty})`
-                  : "Manual entry"}
-              </p>
-            </div>
-            <div>
-              <p className="text-gray-600">Cost / unit</p>
-              <p className="text-gray-300 mt-0.5 tabular-nums">
-                {formatPkr(item.perUnit)}
-              </p>
-            </div>
-            <div>
-              <p className="text-gray-600">Quantity</p>
-              <p className="text-gray-300 mt-0.5 tabular-nums">
-                {qty.toLocaleString("en-US")}
-              </p>
-            </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+          <div>
+            <p className="text-gray-600">Mode</p>
+            <p className="text-gray-300 mt-0.5">
+              {meta.usedAutomatic
+                ? tier === "fixed"
+                  ? `Fixed ≤ ${config.spotUv.fixedMaxQty}`
+                  : tier === "mid"
+                    ? `${config.spotUv.midRatePerUnit} / unit (≤ ${config.spotUv.midMaxQty})`
+                    : `${config.spotUv.highRatePerUnit} / unit (> ${config.spotUv.midMaxQty})`
+                : "Manual entry"}
+            </p>
           </div>
-        )}
+          <div>
+            <p className="text-gray-600">Cost / unit</p>
+            <p className="text-gray-300 mt-0.5 tabular-nums">
+              {formatPkr(item.perUnit)}
+            </p>
+          </div>
+          <div>
+            <p className="text-gray-600">Quantity</p>
+            <p className="text-gray-300 mt-0.5 tabular-nums">
+              {qty.toLocaleString("en-US")}
+            </p>
+          </div>
+        </div>
 
-        {canAuto && onSpotUvOverrideChange && (
+        {qty > 0 && onSpotUvOverrideChange && (
           <div className="flex items-center gap-2 text-xs">
             {!spotUvOverride ? (
               <button
@@ -598,13 +593,13 @@ function SpotUvCard({
                 }}
                 className="text-gray-400 hover:text-gray-200 underline underline-offset-2"
               >
-                Use automatic {formatPkrTotal(config.spotUv.fixedCost)}
+                Use automatic ({autoHint})
               </button>
             )}
           </div>
         )}
 
-        {needsManual && onSpotUvManualRawChange && (
+        {!!spotUvOverride && onSpotUvManualRawChange && (
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5">
               Spot UV cost (PKR, total)
@@ -614,18 +609,11 @@ function SpotUvCard({
               inputMode="decimal"
               step="any"
               min="0"
-              placeholder={
-                canAuto
-                  ? `Optional override (default ${config.spotUv.fixedCost})`
-                  : "Required"
-              }
+              placeholder={`Optional override (auto ${autoHint})`}
               value={spotUvManualRaw ?? ""}
               onChange={(e) => onSpotUvManualRawChange(e.target.value)}
               className={inputCls}
             />
-            {isExcluded && (
-              <p className="mt-1 text-xs text-red-400">Enter Spot UV cost</p>
-            )}
           </div>
         )}
       </div>
@@ -754,9 +742,9 @@ function PrintingCard({
   const autoLabel = `${meta.colors} color${Number(meta.colors) !== 1 ? "s" : ""} × ${formatPkrTotal(Number(meta.costPerColor ?? 0))} × ${meta.sides} side${Number(meta.sides) !== 1 ? "s" : ""}`;
 
   return (
-    <Card className="border-blue-500/20 bg-blue-500/5">
+    <Card className="border-pacify-navy/40 bg-pacify-navy/20">
       <div className="flex items-start justify-between gap-3 mb-3">
-        <h3 className="text-sm font-semibold text-blue-200">Printing</h3>
+        <h3 className="text-sm font-semibold text-pacify-silver">Printing</h3>
         <span className="text-sm font-bold text-white tabular-nums">
           {formatPkrTotal(item.total)}
         </span>
@@ -793,7 +781,7 @@ function PrintingCard({
             <button
               type="button"
               onClick={() => onOverrideChange(true)}
-              className="text-blue-400 hover:text-blue-300 underline underline-offset-2"
+              className="text-pacify-gold hover:text-pacify-gold/80 underline underline-offset-2"
             >
               Override
             </button>
@@ -852,7 +840,12 @@ function PlatesCard({
   onManualRawChange?: (v: string) => void;
 }) {
   const meta = item.meta ?? {};
-  const autoLabel = `${meta.plates} plate${Number(meta.plates) !== 1 ? "s" : ""} × ${formatPkrTotal(Number(meta.costPerPlate ?? 0))} × ${meta.sides} side${Number(meta.sides) !== 1 ? "s" : ""}`;
+  const qtyMult = Number(meta.qtyMultiplier ?? 1);
+  const baseLabel = `${meta.plates} plate${Number(meta.plates) !== 1 ? "s" : ""} × ${formatPkrTotal(Number(meta.costPerPlate ?? 0))} × ${meta.sides} side${Number(meta.sides) !== 1 ? "s" : ""}`;
+  const autoLabel =
+    qtyMult > 1
+      ? `${baseLabel} × ${qtyMult} (qty tier)`
+      : baseLabel;
 
   return (
     <Card className="border-fuchsia-500/20 bg-fuchsia-500/5">
@@ -872,15 +865,20 @@ function PlatesCard({
           </p>
         </div>
         <div>
-          <p className="text-gray-600">One side</p>
+          <p className="text-gray-600">Base (1×)</p>
           <p className="text-gray-300 mt-0.5 tabular-nums">
-            {formatPkrTotal(Number(meta.oneSideCost ?? 0))}
+            {formatPkrTotal(Number(meta.baseTotal ?? meta.oneSideCost ?? 0))}
           </p>
         </div>
         <div>
-          <p className="text-gray-600">Print sides</p>
-          <p className="text-gray-300 mt-0.5">
-            {meta.printSides === "single" ? "Single" : "Double"}
+          <p className="text-gray-600">Qty multiplier</p>
+          <p className="text-gray-300 mt-0.5 tabular-nums">
+            ×{qtyMult}
+            {meta.tier === "mid"
+              ? ` (≤ ${meta.midMaxQty ?? 2500})`
+              : meta.tier === "high"
+                ? ` (> ${meta.midMaxQty ?? 2500})`
+                : ` (≤ ${meta.baseMaxQty ?? 1000})`}
           </p>
         </div>
         <div>
@@ -978,6 +976,7 @@ export function CostCalculation({
   artSheetOptions,
   artSheetKeyOverride,
   onArtSheetKeyChange,
+  hideTotals = false,
 }: Props) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -1128,24 +1127,6 @@ export function CostCalculation({
   ]);
   const otherItems = result.items.filter((i) => !knownIds.has(i.id));
 
-  const ratio =
-    profitRatio != null && Number.isFinite(profitRatio) && profitRatio > 0
-      ? profitRatio
-      : 1;
-  const withoutProfitPkr = result.grandTotal;
-  const withProfitPkr = roundMoney(withoutProfitPkr * ratio);
-  const withoutProfitUsd = pkrToUsd(withoutProfitPkr, config.fx.usdRate);
-  const withProfitUsd = pkrToUsd(withProfitPkr, config.fx.usdRate);
-  const qty = quantity != null && quantity >= 1 ? quantity : null;
-  const perUnitWithoutUsd =
-    withoutProfitUsd != null && qty != null
-      ? roundMoney(withoutProfitUsd / qty)
-      : null;
-  const perUnitWithUsd =
-    withProfitUsd != null && qty != null
-      ? roundMoney(withProfitUsd / qty)
-      : null;
-
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -1175,7 +1156,7 @@ export function CostCalculation({
             <button
               type="button"
               onClick={onDownloadPdf}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-indigo-500 transition-colors"
+              className="btn-primary gap-2"
             >
               <ArrowDownTrayIcon className="h-4 w-4" />
               Download PDF
@@ -1399,6 +1380,21 @@ export function CostCalculation({
                     label: "Max qty for fixed",
                     step: "1",
                   },
+                  {
+                    key: "midMaxQty" as const,
+                    label: "Max qty for mid rate",
+                    step: "1",
+                  },
+                  {
+                    key: "midRatePerUnit" as const,
+                    label: "Mid rate / unit",
+                    step: "1",
+                  },
+                  {
+                    key: "highRatePerUnit" as const,
+                    label: "High rate / unit",
+                    step: "1",
+                  },
                 ] as const
               ).map(({ key, label, step }) => (
                 <div key={key}>
@@ -1414,6 +1410,12 @@ export function CostCalculation({
                 </div>
               ))}
             </div>
+            <p className="mt-3 text-[10px] text-gray-600">
+              ≤ {config.spotUv.fixedMaxQty}: fixed {config.spotUv.fixedCost} ·{" "}
+              ≤ {config.spotUv.midMaxQty}: {config.spotUv.midRatePerUnit}/unit ·{" "}
+              &gt; {config.spotUv.midMaxQty}: {config.spotUv.highRatePerUnit}
+              /unit
+            </p>
           </Card>
 
           <Card className="border-gray-800 bg-gray-900/80">
@@ -1521,7 +1523,38 @@ export function CostCalculation({
                   Default {DEFAULT_COST_CONFIG.plates.costPerPlate}
                 </p>
               </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">
+                  Max qty for 1×
+                </label>
+                {numField(
+                  config.plates.baseMaxQty ?? 1000,
+                  (n) => updatePlates({ baseMaxQty: n }),
+                  "1",
+                )}
+                <p className="mt-1 text-[10px] text-gray-600">
+                  Default {DEFAULT_COST_CONFIG.plates.baseMaxQty}
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">
+                  Max qty for 2×
+                </label>
+                {numField(
+                  config.plates.midMaxQty ?? 2500,
+                  (n) => updatePlates({ midMaxQty: n }),
+                  "1",
+                )}
+                <p className="mt-1 text-[10px] text-gray-600">
+                  Default {DEFAULT_COST_CONFIG.plates.midMaxQty}
+                </p>
+              </div>
             </div>
+            <p className="mt-3 text-[10px] text-gray-600">
+              ≤ {config.plates.baseMaxQty}: 1× base · ≤ {config.plates.midMaxQty}
+              : 2× · &gt; {config.plates.midMaxQty}: 3× (CMYK one side base =
+              8,000)
+            </p>
           </Card>
 
           {(
@@ -1653,6 +1686,20 @@ export function CostCalculation({
                 )}
                 <p className="mt-1 text-[10px] text-gray-600">
                   Default {DEFAULT_COST_CONFIG.shipping.ratePerKg}
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">
+                  Volumetric divisor
+                </label>
+                {numField(
+                  config.shipping.volumetricDivisor ?? 5000,
+                  (n) => updateShipping({ volumetricDivisor: n }),
+                  "1",
+                )}
+                <p className="mt-1 text-[10px] text-gray-600">
+                  Default {DEFAULT_COST_CONFIG.shipping.volumetricDivisor} — (L×W×H
+                  cm) ÷ divisor
                 </p>
               </div>
             </div>
@@ -1886,14 +1933,81 @@ export function CostCalculation({
                 {formatPkrTotal(shipping.total)}
               </span>
             </div>
+
+            <div className="flex flex-wrap gap-4 mb-4 text-xs">
+              {(
+                [
+                  {
+                    value: "actual" as const,
+                    label: "Actual weight",
+                    hint: "Open size × GSM formula",
+                  },
+                  {
+                    value: "volumetric" as const,
+                    label: "Volumetric weight",
+                    hint: "(L × W × H cm) ÷ 5000",
+                  },
+                ] as const
+              ).map((opt) => {
+                const checked =
+                  (config.shipping.weightMode ?? "actual") === opt.value;
+                return (
+                  <label
+                    key={opt.value}
+                    className="inline-flex items-start gap-2 cursor-pointer text-gray-300"
+                  >
+                    <input
+                      type="radio"
+                      name="shipping-weight-mode"
+                      value={opt.value}
+                      checked={checked}
+                      onChange={() =>
+                        updateShipping({
+                          weightMode: opt.value as ShippingWeightMode,
+                        })
+                      }
+                      className="mt-0.5 border-gray-600 bg-gray-800 text-emerald-500 focus:ring-emerald-500/40"
+                    />
+                    <span>
+                      <span className="font-medium text-white">{opt.label}</span>
+                      <span className="block text-[10px] text-gray-600">
+                        {opt.hint}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div>
-                <p className="text-gray-600">Open size (no pad)</p>
-                <p className="text-gray-300 mt-0.5 tabular-nums">
-                  {formatLength(Number(shipping.meta?.openWidthIn ?? 0), "in")} ×{" "}
-                  {formatLength(Number(shipping.meta?.openHeightIn ?? 0), "in")} in
-                </p>
-              </div>
+              {(config.shipping.weightMode ?? "actual") === "volumetric" ? (
+                <div>
+                  <p className="text-gray-600">Closed size (cm)</p>
+                  <p className="text-gray-300 mt-0.5 tabular-nums">
+                    {Number(shipping.meta?.lengthCm ?? 0).toLocaleString("en-US", {
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    ×{" "}
+                    {Number(shipping.meta?.widthCm ?? 0).toLocaleString("en-US", {
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    ×{" "}
+                    {Number(shipping.meta?.heightCm ?? 0).toLocaleString("en-US", {
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    cm
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-gray-600">Open size (no pad)</p>
+                  <p className="text-gray-300 mt-0.5 tabular-nums">
+                    {formatLength(Number(shipping.meta?.openWidthIn ?? 0), "in")} ×{" "}
+                    {formatLength(Number(shipping.meta?.openHeightIn ?? 0), "in")}{" "}
+                    in
+                  </p>
+                </div>
+              )}
               <div>
                 <p className="text-gray-600">Weight / unit</p>
                 <p className="text-gray-300 mt-0.5 tabular-nums">
@@ -1976,67 +2090,14 @@ export function CostCalculation({
         ))}
       </div>
 
-      <Card className="border-indigo-500/30 bg-indigo-500/5">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-            <div>
-              <p className="text-xs font-medium text-indigo-300/70 uppercase tracking-wide">
-                Total (PKR)
-              </p>
-              <p className="mt-1 text-2xl font-bold text-indigo-300 tabular-nums">
-                Base cost: {formatPkrTotal(withoutProfitPkr)}
-              </p>
-              <p className="mt-1 text-2xl font-bold text-white tabular-nums">
-                Selling price (×{ratio}): {formatPkrTotal(withProfitPkr)}
-              </p>
-            </div>
-            <div className="sm:text-right">
-              <p className="text-xs text-gray-500">Per unit (PKR)</p>
-              <p className="text-sm text-gray-300 tabular-nums">
-                Base cost: {formatPkr(result.costPerUnit)}
-              </p>
-              <p className="text-sm text-white tabular-nums">
-                Selling price:{" "}
-                {formatPkr(roundMoney(withProfitPkr / (qty ?? 1)))}
-              </p>
-              <p className="text-[11px] text-gray-600 mt-1">
-                {result.items.filter((i) => !i.excluded).length} cost item
-                {result.items.filter((i) => !i.excluded).length !== 1 ? "s" : ""}
-                {" · "}USD rate {config.fx.usdRate}
-              </p>
-            </div>
-          </div>
-
-          <div className="border-t border-indigo-500/20 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs font-medium text-emerald-300/80 uppercase tracking-wide mb-2">
-                Final total (USD)
-              </p>
-              <p className="text-lg font-semibold text-gray-300 tabular-nums">
-                Base cost:{" "}
-                {withoutProfitUsd != null ? formatUsd(withoutProfitUsd) : "—"}
-              </p>
-              <p className="text-lg font-semibold text-white tabular-nums mt-1">
-                Selling price:{" "}
-                {withProfitUsd != null ? formatUsd(withProfitUsd) : "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-emerald-300/80 uppercase tracking-wide mb-2">
-                Per unit (USD)
-              </p>
-              <p className="text-lg font-semibold text-gray-300 tabular-nums">
-                Base cost:{" "}
-                {perUnitWithoutUsd != null ? formatUsd(perUnitWithoutUsd) : "—"}
-              </p>
-              <p className="text-lg font-semibold text-white tabular-nums mt-1">
-                Selling price:{" "}
-                {perUnitWithUsd != null ? formatUsd(perUnitWithUsd) : "—"}
-              </p>
-            </div>
-          </div>
-        </div>
-      </Card>
+      {!hideTotals && (
+        <CostTotalsSummary
+          result={result}
+          quantity={quantity}
+          profitRatio={profitRatio}
+          usdRate={config.fx.usdRate}
+        />
+      )}
     </div>
   );
 }

@@ -34,11 +34,11 @@ const C = {
   line: [226, 232, 240] as const,
   surface: [248, 250, 252] as const,
   white: [255, 255, 255] as const,
-  brand: [15, 118, 110] as const, // teal-700
-  brandDark: [19, 78, 74] as const, // teal-900
-  brandSoft: [240, 253, 250] as const, // teal-50
-  accent: [30, 64, 175] as const, // blue-800
-  rowAlt: [241, 245, 249] as const,
+  brand: [26, 58, 47] as const, // pacify forest
+  brandDark: [15, 34, 28] as const,
+  brandSoft: [245, 235, 217] as const, // soft gold wash
+  accent: [201, 169, 110] as const, // pacify gold
+  rowAlt: [248, 248, 248] as const,
 };
 
 function safeFilenamePart(name: string): string {

@@ -400,7 +400,7 @@ export function ConfigForm({ config }: ConfigFormProps) {
       <button
         type="submit"
         disabled={loading}
-        className="px-6 py-2.5 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors"
+        className="btn-primary disabled:opacity-50"
       >
         {loading ? "Saving..." : "Save Configuration"}
       </button>

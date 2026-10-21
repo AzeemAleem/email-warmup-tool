@@ -5,6 +5,13 @@ export interface OpenSizeIn {
   openHeightIn: number;
 }
 
+/** Closed box size in centimetres (for volumetric shipping weight) */
+export interface ClosedBoxCm {
+  lengthCm: number;
+  widthCm: number;
+  heightCm: number;
+}
+
 export type PaperType = "art" | "morocco";
 export type PrintSides = "single" | "double";
 /** 1-color job vs CMYK (4 colors) */
@@ -59,6 +66,8 @@ export interface CostContext {
    * null = use automatic (sides × (qty + extra)).
    */
   artSheetsRequiredManual: number | null;
+  /** Closed box L×W×H in cm — required for volumetric shipping weight */
+  closedBoxCm: ClosedBoxCm | null;
 }
 
 export interface CostLineResult {

@@ -9,19 +9,23 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950">
+    <div className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="mx-auto mb-4 h-12 w-12 rounded-xl bg-indigo-600 flex items-center justify-center">
-            <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
+          <div className="mx-auto mb-4 h-14 w-14 rounded-xl bg-pacify-forest flex items-center justify-center ring-1 ring-pacify-gold/40">
+            <span className="text-pacify-gold text-xl font-bold tracking-tight">
+              P
+            </span>
           </div>
-          <h1 className="text-2xl font-bold text-white">Email Warmup Tool</h1>
-          <p className="text-sm text-gray-400 mt-1">Sign in to your dashboard</p>
+          <h1 className="text-2xl font-semibold text-white tracking-tight">
+            Pacify Packaging
+          </h1>
+          <p className="text-sm text-gray-400 mt-1.5">
+            Sign in to your dashboard
+          </p>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-2xl">
+        <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 shadow-2xl shadow-black/40">
           <LoginForm />
         </div>
       </div>

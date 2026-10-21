@@ -125,7 +125,7 @@ function NestPreview({
           width={rw}
           height={rh}
           fill="#111827"
-          stroke="#6366f1"
+          stroke="#C9A96E"
           strokeWidth={1.5}
         />
         {placements.map((p, i) => (
@@ -135,7 +135,7 @@ function NestPreview({
             y={oy + p.y * scale}
             width={Math.max(0, p.w * scale - 0.5)}
             height={Math.max(0, p.h * scale - 0.5)}
-            fill={p.rotated ? "#0891b2" : "#4f46e5"}
+            fill={p.rotated ? "#C0C0C0" : "#1A3A2F"}
             fillOpacity={0.55}
             stroke={p.rotated ? "#22d3ee" : "#818cf8"}
             strokeWidth={0.75}
@@ -296,7 +296,7 @@ function SheetTable({
                         unit={unit}
                       />
                       {isBest && (
-                        <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-600 text-white">
+                        <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold seg-selected">
                           Best
                         </span>
                       )}
@@ -473,7 +473,7 @@ export function SheetOptimization({
               className={clsx(
                 "px-3 py-1 rounded-md text-xs font-medium transition-colors",
                 sortMode === "wastage"
-                  ? "bg-indigo-600 text-white"
+                  ? "seg-selected"
                   : "text-gray-400 hover:text-gray-200",
               )}
             >
@@ -485,7 +485,7 @@ export function SheetOptimization({
               className={clsx(
                 "px-3 py-1 rounded-md text-xs font-medium transition-colors",
                 sortMode === "pieces"
-                  ? "bg-indigo-600 text-white"
+                  ? "seg-selected"
                   : "text-gray-400 hover:text-gray-200",
               )}
             >
@@ -526,7 +526,7 @@ export function SheetOptimization({
                 {!isFlat && (
                   <BatchBadge batch={recommendation.recommended.sheet.batch} />
                 )}
-                <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-600 text-white">
+                <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold seg-selected">
                   Best
                 </span>
                 {costSelectionEnabled && !usingManualCostSheet && (

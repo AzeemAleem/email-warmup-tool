@@ -44,6 +44,7 @@ import {
 } from "../src/lib/cost/items/shippingCost";
 import {
   calcTotalWeightKg,
+  calcVolumetricWeightPerUnitKg,
   calcWeightPerUnitKg,
 } from "../src/lib/cost/items/weightCalc";
 import { pkrToUsd, roundMoney } from "../src/lib/cost/currency";
@@ -492,21 +493,41 @@ assert.equal(
   assert.equal(r!.grandTotal, roundMoney(25084 + 29032 + 33336 + ship12x27(200)));
 }
 
-// ── Spot UV ────────────────────────────────────────────────────────────────
+// ── Spot UV (tiered) ───────────────────────────────────────────────────────
 {
-  const auto200 = calcSpotUvCost(200, DEFAULT_COST_CONFIG.spotUv, null);
+  const auto200 = calcSpotUvCost(200, DEFAULT_COST_CONFIG.spotUv, null)!;
   assert.equal(auto200.mode, "automatic");
+  assert.equal(auto200.tier, "fixed");
   assert.equal(auto200.total, 10000);
   assert.equal(auto200.perUnit, 50);
 
-  const auto150 = calcSpotUvCost(150, DEFAULT_COST_CONFIG.spotUv, null);
+  const auto150 = calcSpotUvCost(150, DEFAULT_COST_CONFIG.spotUv, null)!;
   assert.equal(auto150.total, 10000);
+  assert.equal(auto150.tier, "fixed");
 
-  const needs = calcSpotUvCost(500, DEFAULT_COST_CONFIG.spotUv, null);
-  assert.equal(needs.mode, "needs_input");
-  assert.equal(needs.total, null);
+  // 201–500 → 50 / unit
+  const mid201 = calcSpotUvCost(201, DEFAULT_COST_CONFIG.spotUv, null)!;
+  assert.equal(mid201.tier, "mid");
+  assert.equal(mid201.total, 201 * 50);
+  assert.equal(mid201.perUnit, 50);
 
-  const manual = calcSpotUvCost(500, DEFAULT_COST_CONFIG.spotUv, 18000);
+  const mid500 = calcSpotUvCost(500, DEFAULT_COST_CONFIG.spotUv, null)!;
+  assert.equal(mid500.tier, "mid");
+  assert.equal(mid500.total, 25000);
+  assert.equal(mid500.perUnit, 50);
+
+  // > 500 → 25 / unit
+  const high501 = calcSpotUvCost(501, DEFAULT_COST_CONFIG.spotUv, null)!;
+  assert.equal(high501.tier, "high");
+  assert.equal(high501.total, 501 * 25);
+  assert.equal(high501.perUnit, 25);
+
+  const high1000 = calcSpotUvCost(1000, DEFAULT_COST_CONFIG.spotUv, null)!;
+  assert.equal(high1000.tier, "high");
+  assert.equal(high1000.total, 25000);
+  assert.equal(high1000.perUnit, 25);
+
+  const manual = calcSpotUvCost(500, DEFAULT_COST_CONFIG.spotUv, 18000)!;
   assert.equal(manual.mode, "manual");
   assert.equal(manual.total, 18000);
   assert.equal(manual.perUnit, 36);
@@ -529,18 +550,23 @@ assert.equal(
 }
 
 {
-  const missing = runCostEngine(open12x27, 500, DEFAULT_COST_CONFIG, {
+  // qty 500 → mid tier 50 × 500 = 25,000 (no manual required)
+  const mid = runCostEngine(open12x27, 500, DEFAULT_COST_CONFIG, {
     paperType: "art",
     printSides: "double",
     artSheet: sheet30x40,
     spotUvEnabled: true,
     spotUvManualTotal: null,
   });
-  assert.ok(missing);
-  const uv = missing!.items.find((i) => i.id === "spotUv")!;
-  assert.equal(uv.excluded, true);
-  assert.equal(uv.warning, "Enter Spot UV cost");
-  assert.equal(missing!.grandTotal, roundMoney(62710 + 50806 + ship12x27(500)));
+  assert.ok(mid);
+  const uv = mid!.items.find((i) => i.id === "spotUv")!;
+  assert.equal(uv.excluded, undefined);
+  assert.equal(uv.total, 25000);
+  assert.equal(uv.meta?.tier, "mid");
+  assert.equal(
+    mid!.grandTotal,
+    roundMoney(62710 + 50806 + 25000 + ship12x27(500)),
+  );
 
   const withManual = runCostEngine(open12x27, 500, DEFAULT_COST_CONFIG, {
     paperType: "art",
@@ -673,6 +699,7 @@ assert.equal(
   )!;
   assert.equal(platesOne.total, 2000);
   assert.equal(platesOne.plates, 1);
+  assert.equal(platesOne.qtyMultiplier, 1);
 
   const platesCmykOneSide = calcPlatesCost(
     200,
@@ -682,6 +709,7 @@ assert.equal(
     null,
   )!;
   assert.equal(platesCmykOneSide.total, 8000);
+  assert.equal(platesCmykOneSide.qtyMultiplier, 1);
 
   const platesCmykDouble = calcPlatesCost(
     200,
@@ -692,6 +720,63 @@ assert.equal(
   )!;
   assert.equal(platesCmykDouble.total, 16000);
   assert.equal(platesCmykDouble.oneSideCost, 8000);
+  assert.equal(platesCmykDouble.baseTotal, 16000);
+
+  // ≤ 1000 → 1×
+  const at1000 = calcPlatesCost(
+    1000,
+    "cmyk",
+    "single",
+    DEFAULT_COST_CONFIG.plates,
+    null,
+  )!;
+  assert.equal(at1000.total, 8000);
+  assert.equal(at1000.qtyMultiplier, 1);
+  assert.equal(at1000.tier, "base");
+
+  // 1001–2500 → 2×
+  const mid1001 = calcPlatesCost(
+    1001,
+    "cmyk",
+    "single",
+    DEFAULT_COST_CONFIG.plates,
+    null,
+  )!;
+  assert.equal(mid1001.total, 16000);
+  assert.equal(mid1001.qtyMultiplier, 2);
+  assert.equal(mid1001.tier, "mid");
+
+  const mid2500Double = calcPlatesCost(
+    2500,
+    "cmyk",
+    "double",
+    DEFAULT_COST_CONFIG.plates,
+    null,
+  )!;
+  assert.equal(mid2500Double.total, 32000);
+  assert.equal(mid2500Double.qtyMultiplier, 2);
+
+  // > 2500 → 3× (stays for all higher qty)
+  const high2501 = calcPlatesCost(
+    2501,
+    "cmyk",
+    "single",
+    DEFAULT_COST_CONFIG.plates,
+    null,
+  )!;
+  assert.equal(high2501.total, 24000);
+  assert.equal(high2501.qtyMultiplier, 3);
+  assert.equal(high2501.tier, "high");
+
+  const high5000Double = calcPlatesCost(
+    5000,
+    "cmyk",
+    "double",
+    DEFAULT_COST_CONFIG.plates,
+    null,
+  )!;
+  assert.equal(high5000Double.total, 48000);
+  assert.equal(high5000Double.qtyMultiplier, 3);
 
   assert.equal(parsePlatesTotal("16000"), 16000);
 }
@@ -830,7 +915,7 @@ assert.equal(
     200,
     {
       ...DEFAULT_COST_CONFIG,
-      shipping: { ratePerKg: 1000 },
+      shipping: { ...DEFAULT_COST_CONFIG.shipping, ratePerKg: 1000 },
     },
     {
       paperType: "art",
@@ -849,6 +934,71 @@ assert.equal(
   assert.equal(pkrToUsd(without, 275), roundMoney(without / 275));
   assert.equal(pkrToUsd(withProfit, 275), roundMoney(withProfit / 275));
   assert.equal(DEFAULT_COST_CONFIG.fx.usdRate, 275);
+}
+
+// ── Volumetric shipping weight ─────────────────────────────────────────────
+{
+  // 10 × 8 × 3 in → cm
+  const Lcm = 10 * 2.54;
+  const Wcm = 8 * 2.54;
+  const Hcm = 3 * 2.54;
+  const volPer = calcVolumetricWeightPerUnitKg(Lcm, Wcm, Hcm, 5000)!;
+  assert.ok(Math.abs(volPer - (Lcm * Wcm * Hcm) / 5000) < 1e-12);
+
+  const volShip = calcShippingCost(
+    10,
+    25, // open size ignored in volumetric mode
+    200,
+    DEFAULT_COST_CONFIG.weight,
+    {
+      ...DEFAULT_COST_CONFIG.shipping,
+      weightMode: "volumetric",
+      volumetricDivisor: 5000,
+    },
+    { lengthCm: Lcm, widthCm: Wcm, heightCm: Hcm },
+  )!;
+  assert.equal(volShip.weightMode, "volumetric");
+  assert.equal(
+    volShip.total,
+    roundMoney(calcTotalWeightKg(volPer, 200)! * 3000),
+  );
+
+  const engineVol = runCostEngine(
+    { openWidthIn: 10, openHeightIn: 25 },
+    200,
+    {
+      ...DEFAULT_COST_CONFIG,
+      shipping: {
+        ...DEFAULT_COST_CONFIG.shipping,
+        weightMode: "volumetric",
+      },
+    },
+    {
+      paperType: "art",
+      artSheet: sheet30x40,
+      closedBoxCm: { lengthCm: Lcm, widthCm: Wcm, heightCm: Hcm },
+    },
+  );
+  assert.ok(engineVol);
+  const shipLine = engineVol!.items.find((i) => i.id === "shipping")!;
+  assert.equal(shipLine.total, volShip.total);
+  assert.equal(shipLine.meta?.weightMode, "volumetric");
+
+  // Missing closed box → no shipping line in volumetric mode
+  const missing = runCostEngine(
+    open12x27,
+    200,
+    {
+      ...DEFAULT_COST_CONFIG,
+      shipping: {
+        ...DEFAULT_COST_CONFIG.shipping,
+        weightMode: "volumetric",
+      },
+    },
+    { paperType: "art", artSheet: sheet30x40 },
+  );
+  assert.ok(missing);
+  assert.equal(missing!.items.find((i) => i.id === "shipping"), undefined);
 }
 
 // ── Extra expenses ─────────────────────────────────────────────────────────

@@ -203,7 +203,7 @@ export default function MailerBoxCalculatorPage() {
               className={clsx(
                 "px-4 py-1.5 rounded-md text-sm font-medium transition-colors",
                 unit === u
-                  ? "bg-indigo-600 text-white"
+                  ? "seg-selected"
                   : "text-gray-400 hover:text-gray-200 hover:bg-gray-700/50",
               )}
             >
@@ -550,8 +550,8 @@ function FlatLayoutPreview({
             y={oy}
             width={rw}
             height={rh}
-            fill="#1e1b4b"
-            stroke="#6366f1"
+            fill="#1A1A1A"
+            stroke="#C9A96E"
             strokeWidth={1.5}
             rx={2}
           />
@@ -563,10 +563,10 @@ function FlatLayoutPreview({
               y1={oy}
               x2={x}
               y2={oy + rh}
-              stroke="#4f46e5"
+              stroke="#C9A96E"
               strokeWidth={1}
               strokeDasharray="3 2"
-              opacity={0.7}
+              opacity={0.55}
             />
           ))}
           {[y1, y2, y3, y4].map((y, i) => (
@@ -576,10 +576,10 @@ function FlatLayoutPreview({
               y1={y}
               x2={ox + rw}
               y2={y}
-              stroke="#4f46e5"
+              stroke="#C9A96E"
               strokeWidth={1}
               strokeDasharray="3 2"
-              opacity={0.7}
+              opacity={0.55}
             />
           ))}
 
@@ -589,15 +589,15 @@ function FlatLayoutPreview({
             y={y1}
             width={s(length)}
             height={s(width)}
-            fill="#6366f1"
-            opacity={0.25}
+            fill="#1A3A2F"
+            opacity={0.45}
           />
 
           <text
             x={ox + rw / 2}
             y={oy - 8}
             textAnchor="middle"
-            className="fill-indigo-300"
+            className="fill-pacify-gold"
             style={{ fontSize: 10 }}
           >
             {fmt(openWidth)} {unit}
@@ -606,7 +606,7 @@ function FlatLayoutPreview({
             x={ox - 10}
             y={oy + rh / 2}
             textAnchor="middle"
-            className="fill-cyan-300"
+            className="fill-pacify-silver"
             style={{ fontSize: 10 }}
             transform={`rotate(-90 ${ox - 10} ${oy + rh / 2})`}
           >

@@ -35,9 +35,18 @@ export interface LaminationConfig {
   rate: number;
 }
 
+/**
+ * Spot UV tiered pricing:
+ * - qty ≤ fixedMaxQty → fixedCost (lump sum)
+ * - fixedMaxQty < qty ≤ midMaxQty → midRatePerUnit × qty
+ * - qty > midMaxQty → highRatePerUnit × qty
+ */
 export interface SpotUvConfig {
   fixedCost: number;
   fixedMaxQty: number;
+  midMaxQty: number;
+  midRatePerUnit: number;
+  highRatePerUnit: number;
 }
 
 export interface DieConfig {
@@ -50,9 +59,21 @@ export interface PrintingConfig {
   costPerColor: number;
 }
 
+/**
+ * Printing plates:
+ * base = colors × costPerPlate × sides
+ * then × qtyMultiplier by quantity tier:
+ * - qty ≤ baseMaxQty → 1×
+ * - baseMaxQty < qty ≤ midMaxQty → 2×
+ * - qty > midMaxQty → 3× (stays at 3× for all higher qty)
+ */
 export interface PlatesConfig {
   /** Cost per plate, one side (default 2,000 PKR) */
   costPerPlate: number;
+  /** Qty at or below this uses 1× base (default 1,000) */
+  baseMaxQty: number;
+  /** Qty at or below this (above baseMaxQty) uses 2× base (default 2,500) */
+  midMaxQty: number;
 }
 
 export interface FixedJobConfig {
@@ -67,9 +88,16 @@ export interface WeightConfig {
   scale: number;
 }
 
+/** How shipping weight is measured */
+export type ShippingWeightMode = "actual" | "volumetric";
+
 export interface ShippingConfig {
   /** PKR per kg (default 3,000) */
   ratePerKg: number;
+  /** actual = open-size GSM formula; volumetric = (L×W×H cm) / divisor */
+  weightMode: ShippingWeightMode;
+  /** Volumetric divisor (default 5,000) — (L×W×H cm) / divisor = kg */
+  volumetricDivisor: number;
 }
 
 export interface FxConfig {
@@ -127,6 +155,9 @@ export const DEFAULT_LAMINATION_CONFIG: Readonly<LaminationConfig> = {
 export const DEFAULT_SPOT_UV_CONFIG: Readonly<SpotUvConfig> = {
   fixedCost: 10000,
   fixedMaxQty: 200,
+  midMaxQty: 500,
+  midRatePerUnit: 50,
+  highRatePerUnit: 25,
 };
 
 export const DEFAULT_DIE_CONFIG: Readonly<DieConfig> = {
@@ -139,6 +170,8 @@ export const DEFAULT_PRINTING_CONFIG: Readonly<PrintingConfig> = {
 
 export const DEFAULT_PLATES_CONFIG: Readonly<PlatesConfig> = {
   costPerPlate: 2000,
+  baseMaxQty: 1000,
+  midMaxQty: 2500,
 };
 
 export const DEFAULT_FOILING_CONFIG: Readonly<FixedJobConfig> = {
@@ -161,6 +194,8 @@ export const DEFAULT_WEIGHT_CONFIG: Readonly<WeightConfig> = {
 
 export const DEFAULT_SHIPPING_CONFIG: Readonly<ShippingConfig> = {
   ratePerKg: 3000,
+  weightMode: "actual",
+  volumetricDivisor: 5000,
 };
 
 export const DEFAULT_FX_CONFIG: Readonly<FxConfig> = {

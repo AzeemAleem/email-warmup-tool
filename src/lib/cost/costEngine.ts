@@ -19,6 +19,7 @@ import { shippingCostItem } from "./items/shippingCost";
 import { spotUvCostItem } from "./items/spotUvCost";
 import type {
   ArtSheetSelection,
+  ClosedBoxCm,
   CostContext,
   CostEngineResult,
   CostItemModule,
@@ -77,6 +78,8 @@ export interface CostEngineExtras {
   extraTotal?: number | null;
   /** Manual Art Paper total sheets required; null = automatic */
   artSheetsRequiredManual?: number | null;
+  /** Closed box L×W×H in cm (volumetric shipping) */
+  closedBoxCm?: ClosedBoxCm | null;
 }
 
 /** Parse quantity: whole number ≥ 1 only. Returns null if invalid. */
@@ -150,6 +153,8 @@ function buildContext(
       extras.artSheetsRequiredManual === undefined
         ? null
         : extras.artSheetsRequiredManual,
+    closedBoxCm:
+      extras.closedBoxCm === undefined ? null : extras.closedBoxCm,
   };
 }
 

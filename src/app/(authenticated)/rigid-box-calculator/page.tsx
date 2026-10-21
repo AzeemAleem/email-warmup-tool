@@ -10,6 +10,10 @@ import {
 import { clsx } from "clsx";
 import { Card } from "@/components/ui/Card";
 import { CostCalculation } from "@/components/cost/CostCalculation";
+import {
+  CostTotalsStickyBar,
+  CostTotalsSummary,
+} from "@/components/cost/CostTotalsSummary";
 import { MoroccoRollPanel } from "@/components/cost/MoroccoRollPanel";
 import { SheetOptimization } from "@/components/mailer/SheetOptimization";
 import {
@@ -116,7 +120,7 @@ function SegmentedToggle<T extends string>({
           className={clsx(
             "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
             value === opt.value
-              ? "bg-indigo-600 text-white"
+              ? "seg-selected"
               : "text-gray-400 hover:text-gray-200 hover:bg-gray-700/50",
           )}
         >
@@ -353,20 +357,9 @@ export default function RigidBoxCalculatorPage() {
   }, [artRecommendation, artSheetKeyOverride]);
 
   const spotUvManualTotal = useMemo(() => {
-    if (!spotUvEnabled) return null;
-    const qty = quantity;
-    if (qty == null) return null;
-    const needsManual =
-      qty > costConfig.spotUv.fixedMaxQty || spotUvOverride;
-    if (!needsManual) return null;
+    if (!spotUvEnabled || !spotUvOverride) return null;
     return parseSpotUvTotal(spotUvManualRaw);
-  }, [
-    spotUvEnabled,
-    quantity,
-    costConfig.spotUv.fixedMaxQty,
-    spotUvOverride,
-    spotUvManualRaw,
-  ]);
+  }, [spotUvEnabled, spotUvOverride, spotUvManualRaw]);
 
   const dieManualTotal = useMemo(() => {
     if (!dieEnabled || !dieOverride) return null;
@@ -403,6 +396,15 @@ export default function RigidBoxCalculatorPage() {
     return parseEmbossingTotal(embossingManualRaw);
   }, [embossingEnabled, embossingOverride, embossingManualRaw]);
 
+  const closedBoxCm = useMemo(() => {
+    if (L == null || W == null || H == null) return null;
+    return {
+      lengthCm: convertLength(L, unit, "cm"),
+      widthCm: convertLength(W, unit, "cm"),
+      heightCm: convertLength(H, unit, "cm"),
+    };
+  }, [L, W, H, unit]);
+
   const costResult = useMemo(() => {
     if (!result) return null;
     return runCostEngine(
@@ -438,6 +440,7 @@ export default function RigidBoxCalculatorPage() {
         embossingManualTotal,
         extraTotal,
         artSheetsRequiredManual,
+        closedBoxCm,
       },
     );
   }, [
@@ -469,6 +472,7 @@ export default function RigidBoxCalculatorPage() {
     embossingManualTotal,
     extraTotal,
     artSheetsRequiredManual,
+    closedBoxCm,
   ]);
 
   const errors = {
@@ -584,8 +588,24 @@ export default function RigidBoxCalculatorPage() {
         : "border-gray-700 focus:border-indigo-500 focus:ring-indigo-500/30",
     );
 
+  const showStickyTotals =
+    result != null &&
+    quantity != null &&
+    costResult != null &&
+    L != null &&
+    W != null &&
+    H != null;
+
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div
+      className={clsx(
+        // items-stretch (default) so the aside is as tall as the left column —
+        // required for position:sticky to keep Live totals in view while scrolling.
+        "flex flex-col xl:flex-row gap-6",
+        showStickyTotals && "pb-24 xl:pb-0",
+      )}
+    >
+      <div className="flex-1 min-w-0 space-y-6 max-w-4xl">
       <div>
         <h1 className="text-xl font-semibold text-white">Rigid Box Calculator</h1>
         <p className="text-sm text-gray-400 mt-1">
@@ -676,7 +696,7 @@ export default function RigidBoxCalculatorPage() {
               type="checkbox"
               checked={laminationEnabled}
               onChange={(e) => setLaminationEnabled(e.target.checked)}
-              className="rounded border-gray-600 bg-gray-800 text-indigo-600 focus:ring-indigo-500/40"
+              className="rounded border-gray-600 bg-gray-800 text-pacify-gold focus:ring-pacify-gold/40"
             />
             Lamination
             {paperType === "morocco" && laminationEnabled && (
@@ -696,7 +716,7 @@ export default function RigidBoxCalculatorPage() {
                   setSpotUvManualRaw("");
                 }
               }}
-              className="rounded border-gray-600 bg-gray-800 text-indigo-600 focus:ring-indigo-500/40"
+              className="rounded border-gray-600 bg-gray-800 text-pacify-gold focus:ring-pacify-gold/40"
             />
             Spot UV
           </label>
@@ -711,7 +731,7 @@ export default function RigidBoxCalculatorPage() {
                   setDieManualRaw("");
                 }
               }}
-              className="rounded border-gray-600 bg-gray-800 text-indigo-600 focus:ring-indigo-500/40"
+              className="rounded border-gray-600 bg-gray-800 text-pacify-gold focus:ring-pacify-gold/40"
             />
             Die making + Die cutting
           </label>
@@ -726,7 +746,7 @@ export default function RigidBoxCalculatorPage() {
                   setPrintingManualRaw("");
                 }
               }}
-              className="rounded border-gray-600 bg-gray-800 text-indigo-600 focus:ring-indigo-500/40"
+              className="rounded border-gray-600 bg-gray-800 text-pacify-gold focus:ring-pacify-gold/40"
             />
             Printing
           </label>
@@ -741,7 +761,7 @@ export default function RigidBoxCalculatorPage() {
                   setPlatesManualRaw("");
                 }
               }}
-              className="rounded border-gray-600 bg-gray-800 text-indigo-600 focus:ring-indigo-500/40"
+              className="rounded border-gray-600 bg-gray-800 text-pacify-gold focus:ring-pacify-gold/40"
             />
             Printing plates
           </label>
@@ -756,7 +776,7 @@ export default function RigidBoxCalculatorPage() {
                   setFoilingManualRaw("");
                 }
               }}
-              className="rounded border-gray-600 bg-gray-800 text-indigo-600 focus:ring-indigo-500/40"
+              className="rounded border-gray-600 bg-gray-800 text-pacify-gold focus:ring-pacify-gold/40"
             />
             Silver / Gold Foiling
           </label>
@@ -771,7 +791,7 @@ export default function RigidBoxCalculatorPage() {
                   setLaborManualRaw("");
                 }
               }}
-              className="rounded border-gray-600 bg-gray-800 text-indigo-600 focus:ring-indigo-500/40"
+              className="rounded border-gray-600 bg-gray-800 text-pacify-gold focus:ring-pacify-gold/40"
             />
             Labor
           </label>
@@ -786,7 +806,7 @@ export default function RigidBoxCalculatorPage() {
                   setDebossManualRaw("");
                 }
               }}
-              className="rounded border-gray-600 bg-gray-800 text-indigo-600 focus:ring-indigo-500/40"
+              className="rounded border-gray-600 bg-gray-800 text-pacify-gold focus:ring-pacify-gold/40"
             />
             Deboss
           </label>
@@ -801,7 +821,7 @@ export default function RigidBoxCalculatorPage() {
                   setEmbossingManualRaw("");
                 }
               }}
-              className="rounded border-gray-600 bg-gray-800 text-indigo-600 focus:ring-indigo-500/40"
+              className="rounded border-gray-600 bg-gray-800 text-pacify-gold focus:ring-pacify-gold/40"
             />
             Embossing
           </label>
@@ -1136,7 +1156,7 @@ export default function RigidBoxCalculatorPage() {
         )}
       </Card>
 
-      {result && quantity != null && costResult && L != null && W != null && H != null && (
+      {showStickyTotals && (
         <Card>
           <CostCalculation
             result={costResult}
@@ -1144,6 +1164,7 @@ export default function RigidBoxCalculatorPage() {
             config={costConfig}
             onConfigChange={setCostConfig}
             profitRatio={profitRatio}
+            hideTotals
             artSheetsOverride={artSheetsOverride}
             artSheetsManualRaw={artSheetsManualRaw}
             onArtSheetsOverrideChange={setArtSheetsOverride}
@@ -1250,6 +1271,32 @@ export default function RigidBoxCalculatorPage() {
           />
         </Card>
       )}
+      </div>
+
+      {showStickyTotals && (
+        <>
+          <aside className="hidden xl:block w-80 shrink-0 self-stretch">
+            <div className="sticky top-6 z-20">
+              <p className="text-xs font-medium text-pacify-gold/70 uppercase tracking-[0.14em] mb-2 px-0.5">
+                Live totals
+              </p>
+              <CostTotalsSummary
+                result={costResult}
+                quantity={quantity}
+                profitRatio={profitRatio}
+                usdRate={costConfig.fx.usdRate}
+                compact
+              />
+            </div>
+          </aside>
+          <CostTotalsStickyBar
+            result={costResult}
+            quantity={quantity}
+            profitRatio={profitRatio}
+            usdRate={costConfig.fx.usdRate}
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -1286,11 +1333,11 @@ function RigidLayoutPreview({
   const s = (v: number) => v * scale;
 
   const bands: { label: string; h: number; fill: string }[] = [
-    { label: `L×H`, h: height, fill: "#4f46e5" },
-    { label: `L×W`, h: width, fill: "#0891b2" },
-    { label: `L×H`, h: height, fill: "#4f46e5" },
-    { label: `L×W`, h: width, fill: "#0891b2" },
-    { label: `L×H`, h: height, fill: "#4f46e5" },
+    { label: `L×H`, h: height, fill: "#1A3A2F" },
+    { label: `L×W`, h: width, fill: "#C9A96E" },
+    { label: `L×H`, h: height, fill: "#1A3A2F" },
+    { label: `L×W`, h: width, fill: "#C9A96E" },
+    { label: `L×H`, h: height, fill: "#1A3A2F" },
   ];
 
   let y = oy;
@@ -1314,7 +1361,7 @@ function RigidLayoutPreview({
             width={rw}
             height={rh}
             fill="none"
-            stroke="#6366f1"
+            stroke="#C9A96E"
             strokeWidth={1.5}
           />
           {bands.map((b, i) => {
@@ -1351,7 +1398,7 @@ function RigidLayoutPreview({
             x={ox + rw / 2}
             y={oy - 8}
             textAnchor="middle"
-            className="fill-indigo-300"
+            className="fill-pacify-gold"
             style={{ fontSize: 10 }}
           >
             {fmt(openWidth)} {unit}
@@ -1360,7 +1407,7 @@ function RigidLayoutPreview({
             x={ox - 12}
             y={oy + rh / 2}
             textAnchor="middle"
-            className="fill-cyan-300"
+            className="fill-pacify-silver"
             style={{ fontSize: 10 }}
             transform={`rotate(-90 ${ox - 12} ${oy + rh / 2})`}
           >

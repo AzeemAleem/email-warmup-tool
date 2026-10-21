@@ -91,7 +91,7 @@ export function EventsTable({
               onClick={() => updateParam("status", s === "ALL" ? "" : s)}
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                 currentStatus === s || (s === "ALL" && currentStatus === "ALL")
-                  ? "bg-indigo-600 text-white"
+                  ? "seg-selected"
                   : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200 border border-gray-700"
               }`}
             >

@@ -22,6 +22,30 @@ export function calcWeightPerUnitKg(
   return Number.isFinite(raw) ? raw : null;
 }
 
+/**
+ * Volumetric / dimensional weight (kg) from closed box size in centimetres:
+ * (lengthCm × widthCm × heightCm) / divisor
+ * e.g. (25.4 × 20.32 × 7.62) / 5000
+ *
+ * Dimensions MUST be in cm — convert from mm/in before calling.
+ */
+export function calcVolumetricWeightPerUnitKg(
+  lengthCm: number,
+  widthCm: number,
+  heightCm: number,
+  volumetricDivisor: number = 5000,
+): number | null {
+  if (
+    ![lengthCm, widthCm, heightCm, volumetricDivisor].every(
+      (n) => Number.isFinite(n) && n > 0,
+    )
+  ) {
+    return null;
+  }
+  const raw = (lengthCm * widthCm * heightCm) / volumetricDivisor;
+  return Number.isFinite(raw) ? raw : null;
+}
+
 export function calcTotalWeightKg(
   perUnitKg: number,
   quantity: number,

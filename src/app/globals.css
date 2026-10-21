@@ -2,20 +2,109 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #0f1117;
-  --foreground: #e5e7eb;
+/* Pacify Packaging — Dark Mode theme tokens */
+:root,
+[data-theme="dark"] {
+  --bg-primary: #0d0d0d;
+  --bg-surface: #1a1a1a;
+  --bg-elevated: #1f1f1f;
+
+  --text-primary: #ffffff;
+  --text-secondary: #e5e5e5;
+  --text-body: #b0b0b0;
+  --text-muted: #666666;
+
+  --border-color: #333333;
+  --border-subtle: #1f1f1f;
+
+  --btn-primary-bg: #ffffff;
+  --btn-primary-text: #1a1a1a;
+  --btn-secondary-border: #ffffff;
+  --btn-secondary-text: #ffffff;
+
+  --accent-forest: #1a3a2f;
+  --accent-gold: #c9a96e;
+  --accent-navy: #1e3a5f;
+  --accent-silver: #c0c0c0;
+  --accent-kraft: #8b4513;
+  --accent-rose: #b76e79;
+
+  --background: var(--bg-primary);
+  --foreground: var(--text-primary);
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-inter), Inter, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer base {
+  ::selection {
+    background-color: color-mix(in srgb, var(--accent-gold) 35%, transparent);
+    color: var(--text-primary);
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font-family: inherit;
+  }
+
+  /* Kill browser-default blue on checkboxes / radios / focus */
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--accent-gold);
+  }
+
+  :focus-visible {
+    outline-color: var(--accent-gold);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50;
+    background-color: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: #e5e5e5;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium transition-colors border disabled:opacity-50;
+    border-color: var(--btn-secondary-border);
+    color: var(--btn-secondary-text);
+    background-color: transparent;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background-color: color-mix(in srgb, #ffffff 8%, transparent);
+  }
+
+  .btn-accent {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50;
+    background-color: var(--accent-gold);
+    color: #1a1a1a;
+  }
+  .btn-accent:hover:not(:disabled) {
+    background-color: #d4b87e;
+  }
+
+  /* Selected segmented control / pill (Unit, Paper type, etc.) */
+  .seg-selected {
+    background-color: var(--accent-gold) !important;
+    color: #1a1a1a !important;
+  }
 }
 
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: #374151 #1f2937;
+    scrollbar-color: #333333 #1a1a1a;
   }
 }

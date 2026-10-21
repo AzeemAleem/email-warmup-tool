@@ -9,12 +9,34 @@ import type {
 import { sidesMultiplier } from "./artPaperCost";
 import { colorCount } from "./printingCost";
 
+export type PlatesQtyTier = "base" | "mid" | "high";
+
+/**
+ * Quantity multiplier for plates:
+ * - qty ≤ baseMaxQty → 1
+ * - baseMaxQty < qty ≤ midMaxQty → 2
+ * - qty > midMaxQty → 3
+ */
+export function platesQtyMultiplier(
+  quantity: number,
+  config: Pick<PlatesConfig, "baseMaxQty" | "midMaxQty">,
+): { multiplier: number; tier: PlatesQtyTier } {
+  const baseMax =
+    config.baseMaxQty > 0 ? config.baseMaxQty : 1000;
+  const midMax = config.midMaxQty > baseMax ? config.midMaxQty : 2500;
+
+  if (quantity <= baseMax) return { multiplier: 1, tier: "base" };
+  if (quantity <= midMax) return { multiplier: 2, tier: "mid" };
+  return { multiplier: 3, tier: "high" };
+}
+
 /**
  * Printing plates cost:
  * plates = colors (1-color → 1 plate, CMYK → 4 plates)
  * oneSide = plates × costPerPlate
- * total = oneSide × sidesMultiplier
- * e.g. CMYK double = 4 × 2000 × 2 = 16,000 PKR
+ * base = oneSide × sidesMultiplier
+ *   e.g. CMYK double = 4 × 2000 × 2 = 16,000 PKR
+ * total = base × qtyMultiplier (1 / 2 / 3 by quantity tier)
  */
 export function calcPlatesCost(
   quantity: number,
@@ -30,6 +52,9 @@ export function calcPlatesCost(
   plates: number;
   sides: number;
   oneSideCost: number;
+  baseTotal: number;
+  qtyMultiplier: number;
+  tier: PlatesQtyTier;
 } | null {
   if (!Number.isInteger(quantity) || quantity < 1) return null;
   const colors = colorCount(colorMode);
@@ -39,7 +64,12 @@ export function calcPlatesCost(
   if (!(plates >= 1) || !(sides >= 1) || !(costPerPlate > 0)) return null;
 
   const oneSideCost = plates * costPerPlate;
-  const automatic = roundMoney(oneSideCost * sides);
+  const baseTotal = roundMoney(oneSideCost * sides);
+  const { multiplier: qtyMultiplier, tier } = platesQtyMultiplier(
+    quantity,
+    config,
+  );
+  const automatic = roundMoney(baseTotal * qtyMultiplier);
 
   const usedAutomatic = !(
     manualTotal != null &&
@@ -60,6 +90,9 @@ export function calcPlatesCost(
     plates,
     sides,
     oneSideCost,
+    baseTotal,
+    qtyMultiplier,
+    tier,
   };
 }
 
@@ -109,6 +142,11 @@ export const platesCostItem: CostItemModule = {
         printSides,
         costPerPlate: config.plates.costPerPlate,
         oneSideCost: result.oneSideCost,
+        baseTotal: result.baseTotal,
+        qtyMultiplier: result.qtyMultiplier,
+        tier: result.tier,
+        baseMaxQty: config.plates.baseMaxQty,
+        midMaxQty: config.plates.midMaxQty,
       },
     };
   },

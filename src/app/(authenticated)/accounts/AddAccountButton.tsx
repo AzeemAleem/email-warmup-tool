@@ -113,7 +113,7 @@ export function AddAccountButton() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+        className="btn-primary gap-2"
       >
         <PlusIcon className="h-4 w-4" />
         Add Account
@@ -263,7 +263,7 @@ export function AddAccountButton() {
                       ? "Test credentials successfully before adding the account"
                       : undefined
                   }
-                  className="flex-1 py-2 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="btn-primary flex-1 disabled:cursor-not-allowed"
                 >
                   {loading ? "Adding..." : "Add Account"}
                 </button>

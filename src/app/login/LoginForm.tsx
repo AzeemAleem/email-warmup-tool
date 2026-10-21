@@ -32,6 +32,9 @@ export function LoginForm() {
     }
   }
 
+  const fieldCls =
+    "w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-pacify-gold focus:ring-1 focus:ring-pacify-gold/30";
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
@@ -45,7 +48,7 @@ export function LoginForm() {
           required
           autoComplete="email"
           placeholder="admin@example.com"
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+          className={fieldCls}
         />
       </div>
       <div>
@@ -59,19 +62,13 @@ export function LoginForm() {
           required
           autoComplete="current-password"
           placeholder="••••••••"
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+          className={fieldCls}
         />
       </div>
 
-      {error && (
-        <p className="text-sm text-red-400">{error}</p>
-      )}
+      {error && <p className="text-sm text-red-400">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
-      >
+      <button type="submit" disabled={loading} className="btn-primary w-full">
         {loading ? "Signing in..." : "Sign in"}
       </button>
     </form>
