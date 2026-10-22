@@ -25,7 +25,7 @@ import {
   quantityError,
   runCostEngine,
 } from "@/lib/cost/costEngine";
-import { downloadRigidCostPdf } from "@/lib/cost/exportCostPdf";
+import { downloadRigidCostImage } from "@/lib/cost/exportCostImage";
 import { parseDebossTotal } from "@/lib/cost/items/debossCost";
 import { parseDieTotal } from "@/lib/cost/items/dieCost";
 import { parseEmbossingTotal } from "@/lib/cost/items/embossingCost";
@@ -1173,8 +1173,8 @@ export default function RigidBoxCalculatorPage() {
             artSheetKeyOverride={artSheetKeyOverride}
             onArtSheetKeyChange={setArtSheetKeyOverride}
             clientName={clientName}
-            onDownloadPdf={() =>
-              downloadRigidCostPdf({
+            onDownloadImage={() => {
+              void downloadRigidCostImage({
                 clientName,
                 length: L,
                 width: W,
@@ -1189,8 +1189,8 @@ export default function RigidBoxCalculatorPage() {
                 profitRatio: profitRatio ?? 1,
                 usdRate: costConfig.fx.usdRate,
                 costResult,
-              })
-            }
+              });
+            }}
             spotUvEnabled={spotUvEnabled}
             spotUvOverride={spotUvOverride}
             spotUvManualRaw={spotUvManualRaw}

@@ -92,7 +92,7 @@ interface Props {
   /** Profit multiplier, e.g. 1.5 = +50%. Invalid/empty → treat as 1. */
   profitRatio?: number | null;
   clientName?: string;
-  onDownloadPdf?: () => void;
+  onDownloadImage?: () => void;
   /** Art paper: editable total sheets required */
   artSheetsOverride?: boolean;
   artSheetsManualRaw?: string;
@@ -968,7 +968,7 @@ export function CostCalculation({
   embossing,
   profitRatio,
   clientName,
-  onDownloadPdf,
+  onDownloadImage,
   artSheetsOverride,
   artSheetsManualRaw,
   onArtSheetsOverrideChange,
@@ -1152,14 +1152,14 @@ export function CostCalculation({
             />
             Cost settings
           </button>
-          {onDownloadPdf && (
+          {onDownloadImage && (
             <button
               type="button"
-              onClick={onDownloadPdf}
+              onClick={onDownloadImage}
               className="btn-primary gap-2"
             >
               <ArrowDownTrayIcon className="h-4 w-4" />
-              Download PDF
+              Download PNG
             </button>
           )}
         </div>
