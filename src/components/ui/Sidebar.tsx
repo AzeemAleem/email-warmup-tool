@@ -13,6 +13,7 @@ import {
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
   DocumentTextIcon,
+  FolderOpenIcon,
 } from "@heroicons/react/24/outline";
 import { clsx } from "clsx";
 
@@ -24,6 +25,7 @@ const navigation = [
   { name: "Mailer Box Calculator", href: "/mailer-box-calculator", icon: CubeIcon },
   { name: "Rigid Box Calculator", href: "/rigid-box-calculator", icon: Square3Stack3DIcon },
   { name: "Invoice Generator", href: "/invoice-generator", icon: DocumentTextIcon },
+  { name: "Saved Invoices", href: "/invoices", icon: FolderOpenIcon },
 ];
 
 export function Sidebar({

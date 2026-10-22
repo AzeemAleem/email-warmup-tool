@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowDownTrayIcon,
   CheckIcon,
   ChevronDownIcon,
+  DocumentPlusIcon,
+  FolderOpenIcon,
   PlusIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
@@ -14,6 +18,7 @@ import {
   exportInvoicePdf,
   type InvoiceBullet,
 } from "@/lib/invoice/exportInvoicePdf";
+import type { InvoiceDraftPayload } from "@/lib/invoice/draft";
 
 // ── Page-2 pricing helpers ────────────────────────────────────────────────────
 
@@ -196,19 +201,35 @@ function fmtMoney(amount: number, currency: "PKR" | "USD") {
   return `PKR ${Math.round(amount).toLocaleString("en-US")}`;
 }
 
+function makeQuoteNo() {
+  return `PP-${Math.floor(10000 + Math.random() * 90000)}`;
+}
+
+const DEFAULT_CHECKED = ["both", "matte", "qc", "prototype", "dieline", "artworkspec"];
+
 // ── Page component ───────────────────────────────────────────────────────────
 
 export default function InvoiceGeneratorPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="text-sm text-gray-400 py-8">Loading invoice generator…</div>
+      }
+    >
+      <InvoiceGeneratorForm />
+    </Suspense>
+  );
+}
+
+function InvoiceGeneratorForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("id");
+
   // Auto-generated header fields — set on client only to avoid hydration mismatch
   const [invoiceId, setInvoiceId] = useState("");
   const [dateStr, setDateStr] = useState("");
   const [validStr, setValidStr] = useState("");
-
-  useEffect(() => {
-    setInvoiceId(`PP-${Math.floor(10000 + Math.random() * 90000)}`);
-    setDateStr(fmtDate(new Date()));
-    setValidStr(fmtDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));
-  }, []);
 
   // Client
   const [clientName,  setClientName]  = useState("");
@@ -225,7 +246,7 @@ export default function InvoiceGeneratorPage() {
 
   // Checklist — Exterior & interior, Matte lamination, all Quality & Production
   const [checked, setChecked] = useState<Set<string>>(
-    () => new Set(["both", "matte", "qc", "prototype", "dieline", "artworkspec"]),
+    () => new Set(DEFAULT_CHECKED),
   );
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(GROUPS.map((g) => g.id)));
 
@@ -241,6 +262,12 @@ export default function InvoiceGeneratorPage() {
     emptyVolRow(),
     emptyVolRow(),
   ]);
+
+  // Database persistence
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [loadingSaved, setLoadingSaved] = useState(Boolean(editId));
 
   function toggleItem(id: string) {
     setChecked((prev) => {
@@ -379,6 +406,152 @@ export default function InvoiceGeneratorPage() {
     );
   }
 
+  function buildPayload(): InvoiceDraftPayload {
+    return {
+      quoteNo: invoiceId,
+      dateStr,
+      validStr,
+      clientName,
+      clientEmail,
+      orderTitle,
+      sizeText,
+      styleText,
+      colorText,
+      brandingText,
+      checkedIds: Array.from(checked),
+      qtyRaw,
+      priceRaw,
+      currency,
+      includePage2,
+      optTables: optTables.map((t) => ({
+        title: t.title,
+        columns: t.columns,
+        rows: t.rows.map((r) => t.columns.map((_, i) => r.cells[i] ?? "")),
+      })),
+      volRows: volRows.map((r) => ({ qty: r.qty, unitPrice: r.unitPrice })),
+    };
+  }
+
+  function applyPayload(p: InvoiceDraftPayload) {
+    setInvoiceId(p.quoteNo);
+    setDateStr(p.dateStr);
+    setValidStr(p.validStr);
+    setClientName(p.clientName);
+    setClientEmail(p.clientEmail);
+    setOrderTitle(p.orderTitle);
+    setSizeText(p.sizeText);
+    setStyleText(p.styleText);
+    setColorText(p.colorText);
+    setBrandingText(p.brandingText);
+    setChecked(new Set(p.checkedIds));
+    setQtyRaw(p.qtyRaw);
+    setPriceRaw(p.priceRaw);
+    setCurrency(p.currency);
+    setIncludePage2(p.includePage2);
+    setOptTables(
+      p.optTables.length > 0
+        ? p.optTables.map((t) => ({
+            id: newId(),
+            title: t.title,
+            columns: t.columns,
+            rows: t.rows.map((cells) => ({
+              id: newId(),
+              cells: [...cells],
+            })),
+          }))
+        : [emptyOptTable()],
+    );
+    setVolRows(
+      p.volRows.length > 0
+        ? p.volRows.map((r) => ({ id: newId(), qty: r.qty, unitPrice: r.unitPrice }))
+        : [emptyVolRow(), emptyVolRow()],
+    );
+  }
+
+  function resetNewForm() {
+    setSavedId(null);
+    setSaveMsg(null);
+    setInvoiceId(makeQuoteNo());
+    setDateStr(fmtDate(new Date()));
+    setValidStr(fmtDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));
+    setClientName("");
+    setClientEmail("");
+    setOrderTitle("");
+    setSizeText('12" × 9" × 3" inches');
+    setStyleText("");
+    setColorText("");
+    setBrandingText("");
+    setChecked(new Set(DEFAULT_CHECKED));
+    setQtyRaw("");
+    setPriceRaw("");
+    setCurrency("USD");
+    setIncludePage2(false);
+    setOptTables([emptyOptTable()]);
+    setVolRows([emptyVolRow(), emptyVolRow()]);
+  }
+
+  function handleNew() {
+    router.push("/invoice-generator");
+    resetNewForm();
+  }
+
+  async function handleSave() {
+    if (!invoiceId) return;
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      const payload = buildPayload();
+      const res = savedId
+        ? await fetch(`/api/invoices/${savedId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ payload }),
+          })
+        : await fetch("/api/invoices", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ payload }),
+          });
+      if (!res.ok) throw new Error("save failed");
+      const data = (await res.json()) as { id: string };
+      setSavedId(data.id);
+      setSaveMsg(savedId ? "Updated in database" : "Saved to database");
+      router.replace(`/invoice-generator?id=${data.id}`);
+    } catch {
+      setSaveMsg("Save failed — check database connection");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function loadSavedInvoice(id: string) {
+    setLoadingSaved(true);
+    setSaveMsg(null);
+    try {
+      const res = await fetch(`/api/invoices/${id}`);
+      if (!res.ok) throw new Error("load failed");
+      const data = (await res.json()) as { id: string; payload: InvoiceDraftPayload };
+      applyPayload(data.payload);
+      setSavedId(data.id);
+      setSaveMsg("Loaded for editing — update save or download PDF");
+    } catch {
+      setSaveMsg("Failed to load invoice");
+      resetNewForm();
+    } finally {
+      setLoadingSaved(false);
+    }
+  }
+
+  useEffect(() => {
+    if (editId) {
+      void loadSavedInvoice(editId);
+    } else {
+      resetNewForm();
+      setLoadingSaved(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load when URL id changes
+  }, [editId]);
+
   async function handleDownload() {
     if (!canDownload || total == null || !invoiceId) return;
     await exportInvoicePdf({
@@ -406,12 +579,57 @@ export default function InvoiceGeneratorPage() {
 
       {/* ── Left form column ──────────────────────────────────────────── */}
       <div className="flex-1 min-w-0 space-y-5 max-w-3xl">
-        <div>
-          <h1 className="text-xl font-semibold text-white">Invoice Generator</h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Build a professional packaging quotation PDF — download and send to your client.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-white">Invoice Generator</h1>
+            <p className="text-sm text-gray-400 mt-1">
+              Build a quotation PDF — save it, then manage all saved quotes under{" "}
+              <Link href="/invoices" className="text-pacify-gold hover:underline">
+                Saved Invoices
+              </Link>
+              .
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/invoices"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-gray-700 text-gray-300 hover:text-white hover:border-pacify-gold/40 transition-colors"
+            >
+              <FolderOpenIcon className="h-4 w-4" />
+              All saved
+            </Link>
+            <button
+              type="button"
+              onClick={handleNew}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-gray-700 text-gray-300 hover:text-white hover:border-pacify-gold/40 transition-colors"
+            >
+              <DocumentPlusIcon className="h-4 w-4" />
+              New quote
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSave()}
+              disabled={saving || !invoiceId || loadingSaved}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-pacify-gold text-pacify-black hover:bg-pacify-gold/90 disabled:opacity-50 transition-colors"
+            >
+              {saving ? "Saving…" : savedId ? "Update save" : "Save to database"}
+            </button>
+          </div>
         </div>
+
+        {saveMsg && (
+          <p className="text-xs text-pacify-gold/90 -mt-2">{saveMsg}</p>
+        )}
+
+        {loadingSaved && (
+          <p className="text-xs text-gray-400 -mt-2">Loading saved invoice…</p>
+        )}
+
+        {savedId && !loadingSaved && (
+          <p className="text-[11px] text-pacify-gold/70 -mt-2 uppercase tracking-wide font-semibold">
+            Editing saved quote
+          </p>
+        )}
 
         {/* Invoice meta */}
         <Card>
@@ -986,7 +1204,16 @@ export default function InvoiceGeneratorPage() {
             </div>
           </Card>
 
-          {/* Download button */}
+          {/* Save + Download */}
+          <button
+            type="button"
+            disabled={saving || !invoiceId}
+            onClick={() => void handleSave()}
+            className="w-full flex items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold border border-pacify-gold/40 text-pacify-gold hover:bg-pacify-gold/10 disabled:opacity-50 transition-colors"
+          >
+            {saving ? "Saving…" : savedId ? "Update save" : "Save to database"}
+          </button>
+
           <button
             type="button"
             disabled={!canDownload}
@@ -1004,6 +1231,11 @@ export default function InvoiceGeneratorPage() {
           {!canDownload && (
             <p className="text-xs text-gray-600 text-center -mt-2">
               Add quantity and unit price to generate
+            </p>
+          )}
+          {savedId && (
+            <p className="text-[10px] text-center text-gray-500 -mt-1">
+              Editing saved quote · changes need Update save
             </p>
           )}
         </div>

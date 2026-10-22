@@ -99,3 +99,24 @@ model ContentTemplate {
   createdAt  DateTime @default(now())
   lastUsedAt DateTime?
 }
+
+/// Saved packaging quotation drafts (Invoice Generator)
+model Invoice {
+  id          String   @id @default(cuid())
+  quoteNo     String
+  clientName  String   @default("")
+  clientEmail String   @default("")
+  orderTitle  String   @default("")
+  currency    String   @default("USD") // PKR | USD
+  quantity    Int?
+  unitPrice   Float?
+  totalAmount Float?
+  /// Full form draft for reload/edit (JSON)
+  payload     Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([quoteNo])
+  @@index([createdAt])
+  @@index([clientName])
+}
