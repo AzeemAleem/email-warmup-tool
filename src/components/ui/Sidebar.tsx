@@ -12,6 +12,7 @@ import {
   Square3Stack3DIcon,
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { clsx } from "clsx";
 
@@ -22,6 +23,7 @@ const navigation = [
   { name: "Config", href: "/config", icon: Cog6ToothIcon },
   { name: "Mailer Box Calculator", href: "/mailer-box-calculator", icon: CubeIcon },
   { name: "Rigid Box Calculator", href: "/rigid-box-calculator", icon: Square3Stack3DIcon },
+  { name: "Invoice Generator", href: "/invoice-generator", icon: DocumentTextIcon },
 ];
 
 export function Sidebar({
