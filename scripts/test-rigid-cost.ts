@@ -46,6 +46,7 @@ import {
   calcTotalWeightKg,
   calcVolumetricWeightPerUnitKg,
   calcWeightPerUnitKg,
+  roundWeightKg,
 } from "../src/lib/cost/items/weightCalc";
 import { pkrToUsd, roundMoney } from "../src/lib/cost/currency";
 import { calcRigidBox, DEFAULT_RIGID_OPTIONS } from "../src/lib/rigidBoxCalc";
@@ -958,9 +959,19 @@ assert.equal(
     { lengthCm: Lcm, widthCm: Wcm, heightCm: Hcm },
   )!;
   assert.equal(volShip.weightMode, "volumetric");
+  // Chargeable weight = cartonsNeeded × 22 kg (not product vol. total)
+  assert.ok(volShip.airCarton);
+  assert.equal(
+    volShip.totalKg,
+    volShip.airCarton!.cartonsNeeded * volShip.airCarton!.cartonMaxKg,
+  );
   assert.equal(
     volShip.total,
-    roundMoney(calcTotalWeightKg(volPer, 200)! * 3000),
+    roundMoney(volShip.airCarton!.cartonsNeeded * 22 * 3000),
+  );
+  assert.equal(
+    volShip.productTotalKg,
+    roundWeightKg(calcTotalWeightKg(volPer, 200)!, 4),
   );
 
   const engineVol = runCostEngine(
@@ -999,6 +1010,24 @@ assert.equal(
   );
   assert.ok(missing);
   assert.equal(missing!.items.find((i) => i.id === "shipping"), undefined);
+
+  // Air carton packing (21×17×16 in, max 22 kg) — volumetric only
+  assert.ok(volShip.airCarton);
+  assert.equal(volShip.airCarton!.cartonLengthIn, 21);
+  assert.equal(volShip.airCarton!.cartonWidthIn, 17);
+  assert.equal(volShip.airCarton!.cartonHeightIn, 16);
+  assert.equal(volShip.airCarton!.cartonMaxKg, 22);
+  assert.ok(volShip.airCarton!.unitsPerCarton >= 1);
+  assert.equal(
+    volShip.airCarton!.unitsPerCarton,
+    Math.min(volShip.airCarton!.unitsByVolume, volShip.airCarton!.unitsByWeight),
+  );
+  assert.equal(
+    volShip.airCarton!.cartonsNeeded,
+    Math.ceil(200 / volShip.airCarton!.unitsPerCarton),
+  );
+  assert.equal(shipLine.meta?.unitsPerCarton, volShip.airCarton!.unitsPerCarton);
+  assert.equal(shipLine.meta?.cartonsNeeded, volShip.airCarton!.cartonsNeeded);
 }
 
 // ── Extra expenses ─────────────────────────────────────────────────────────

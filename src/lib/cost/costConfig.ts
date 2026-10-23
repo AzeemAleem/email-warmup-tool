@@ -98,6 +98,15 @@ export interface ShippingConfig {
   weightMode: ShippingWeightMode;
   /** Volumetric divisor (default 5,000) — (L×W×H cm) / divisor = kg */
   volumetricDivisor: number;
+  /**
+   * Air “25 kg” carton inner size (inches).
+   * Used only in volumetric mode to estimate units/carton and carton count.
+   */
+  airCartonLengthIn: number;
+  airCartonWidthIn: number;
+  airCartonHeightIn: number;
+  /** Safety max fill weight per air carton (kg). Default 22 (not full 25). */
+  airCartonMaxKg: number;
 }
 
 export interface FxConfig {
@@ -196,6 +205,10 @@ export const DEFAULT_SHIPPING_CONFIG: Readonly<ShippingConfig> = {
   ratePerKg: 3000,
   weightMode: "actual",
   volumetricDivisor: 5000,
+  airCartonLengthIn: 21,
+  airCartonWidthIn: 17,
+  airCartonHeightIn: 16,
+  airCartonMaxKg: 22,
 };
 
 export const DEFAULT_FX_CONFIG: Readonly<FxConfig> = {

@@ -98,6 +98,18 @@ const GROUPS: CGroup[] = [
       { id: "collapse",   label: "Collapsible rigid box",        boldPrefix: "Structure:", text: "Collapsible magnetic book-style rigid presentation box" },
       { id: "flapbox",    label: "Magnetic flap closure box",    boldPrefix: "Structure:", text: "Premium rigid box with magnetic flap closure" },
       { id: "corrmailer", label: "Standard corrugated mailer",   boldPrefix: "Structure:", text: "Standard corrugated self-seal mailer box" },
+      {
+        id: "vol-assembled",
+        label: "Volume-based rigid — Assembled",
+        boldPrefix: "Structure:",
+        text: "Assembled rigid box shipped volume-based (fully erected, ready-to-use construction)",
+      },
+      {
+        id: "vol-collapsible",
+        label: "Volume-based rigid — Collapsible",
+        boldPrefix: "Structure:",
+        text: "Collapsible rigid box shipped volume-based (ships flat / knock-down; not pre-assembled)",
+      },
     ],
   },
   {

@@ -2009,7 +2009,11 @@ export function CostCalculation({
                 </div>
               )}
               <div>
-                <p className="text-gray-600">Weight / unit</p>
+                <p className="text-gray-600">
+                  {(config.shipping.weightMode ?? "actual") === "volumetric"
+                    ? "Vol. weight / unit"
+                    : "Weight / unit"}
+                </p>
                 <p className="text-gray-300 mt-0.5 tabular-nums">
                   {Number(shipping.meta?.perUnitKg ?? 0).toLocaleString("en-US", {
                     maximumFractionDigits: 6,
@@ -2018,13 +2022,28 @@ export function CostCalculation({
                 </p>
               </div>
               <div>
-                <p className="text-gray-600">Total weight</p>
+                <p className="text-gray-600">
+                  {(config.shipping.weightMode ?? "actual") === "volumetric"
+                    ? "Chargeable weight"
+                    : "Total weight"}
+                </p>
                 <p className="text-gray-300 mt-0.5 tabular-nums">
                   {Number(shipping.meta?.totalKg ?? 0).toLocaleString("en-US", {
                     maximumFractionDigits: 4,
                   })}{" "}
                   kg
                 </p>
+                {(config.shipping.weightMode ?? "actual") === "volumetric" &&
+                  Number(shipping.meta?.cartonsNeeded ?? 0) > 0 && (
+                    <p className="text-[10px] text-gray-600 mt-0.5">
+                      {Number(shipping.meta?.cartonsNeeded ?? 0).toLocaleString("en-US")}{" "}
+                      cartons ×{" "}
+                      {Number(
+                        shipping.meta?.airCartonMaxKg ?? config.shipping.airCartonMaxKg,
+                      )}{" "}
+                      kg
+                    </p>
+                  )}
               </div>
               <div>
                 <label className="block text-gray-600 mb-1">Rate / kg (PKR)</label>
@@ -2046,6 +2065,77 @@ export function CostCalculation({
                 </p>
               </div>
             </div>
+
+            {(config.shipping.weightMode ?? "actual") === "volumetric" && (
+              <div className="mt-4 rounded-lg border border-emerald-500/20 bg-gray-950/40 p-3 space-y-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-emerald-300/80 font-semibold">
+                    Air carton packing (25 kg carton)
+                  </p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    Carton {Number(shipping.meta?.airCartonLengthIn ?? config.shipping.airCartonLengthIn)}{" "}
+                    × {Number(shipping.meta?.airCartonWidthIn ?? config.shipping.airCartonWidthIn)}{" "}
+                    × {Number(shipping.meta?.airCartonHeightIn ?? config.shipping.airCartonHeightIn)}{" "}
+                    in · max fill{" "}
+                    {Number(shipping.meta?.airCartonMaxKg ?? config.shipping.airCartonMaxKg)} kg
+                    (safety)
+                  </p>
+                </div>
+
+                {Number(shipping.meta?.unitsPerCarton ?? 0) > 0 ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="rounded-md bg-gray-900/60 border border-gray-800 px-3 py-2.5">
+                        <p className="text-gray-500">Units / carton</p>
+                        <p className="text-lg font-bold text-white tabular-nums mt-0.5">
+                          {Number(shipping.meta?.unitsPerCarton ?? 0).toLocaleString("en-US")}
+                        </p>
+                        <p className="text-[10px] text-gray-600 mt-1">
+                          Volume fit{" "}
+                          {Number(shipping.meta?.unitsByVolume ?? 0).toLocaleString("en-US")} · weight
+                          fit{" "}
+                          {Number(shipping.meta?.unitsByWeight ?? 0).toLocaleString("en-US")}
+                          {shipping.meta?.cartonLimitedBy === "volume"
+                            ? " · limited by space"
+                            : shipping.meta?.cartonLimitedBy === "weight"
+                              ? ` · limited by ${Number(shipping.meta?.airCartonMaxKg ?? config.shipping.airCartonMaxKg)} kg`
+                              : shipping.meta?.cartonLimitedBy === "both"
+                                ? " · space & weight equal"
+                                : ""}
+                        </p>
+                      </div>
+                      <div className="rounded-md bg-gray-900/60 border border-gray-800 px-3 py-2.5">
+                        <p className="text-gray-500">Total cartons needed</p>
+                        <p className="text-lg font-bold text-pacify-gold tabular-nums mt-0.5">
+                          {Number(shipping.meta?.cartonsNeeded ?? 0).toLocaleString("en-US")}
+                        </p>
+                        <p className="text-[10px] text-gray-600 mt-1">
+                          For {quantity.toLocaleString("en-US")} units
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-gray-500 leading-snug">
+                      Chargeable weight = cartons ×{" "}
+                      {Number(
+                        shipping.meta?.airCartonMaxKg ?? config.shipping.airCartonMaxKg,
+                      )}{" "}
+                      kg (each air carton is billed at the full safety weight even if product
+                      volumetric weight inside is lower). Product vol. total{" "}
+                      {Number(shipping.meta?.productTotalKg ?? 0).toLocaleString("en-US", {
+                        maximumFractionDigits: 2,
+                      })}{" "}
+                      kg.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-amber-300/90">
+                    Box does not fit in the air carton by size, or one unit exceeds the{" "}
+                    {Number(shipping.meta?.airCartonMaxKg ?? config.shipping.airCartonMaxKg)} kg
+                    limit.
+                  </p>
+                )}
+              </div>
+            )}
           </Card>
         )}
         {extra && (
