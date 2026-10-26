@@ -2037,9 +2037,11 @@ export function CostCalculation({
                   Number(shipping.meta?.cartonsNeeded ?? 0) > 0 && (
                     <p className="text-[10px] text-gray-600 mt-0.5">
                       {Number(shipping.meta?.cartonsNeeded ?? 0).toLocaleString("en-US")}{" "}
-                      cartons ×{" "}
+                      × {String(shipping.meta?.bestCartonLabel ?? "carton")} ×{" "}
                       {Number(
-                        shipping.meta?.airCartonMaxKg ?? config.shipping.airCartonMaxKg,
+                        shipping.meta?.chargeablePerCartonKg ??
+                          shipping.meta?.airCartonLabeledKg ??
+                          0,
                       )}{" "}
                       kg
                     </p>
@@ -2066,76 +2068,274 @@ export function CostCalculation({
               </div>
             </div>
 
-            {(config.shipping.weightMode ?? "actual") === "volumetric" && (
-              <div className="mt-4 rounded-lg border border-emerald-500/20 bg-gray-950/40 p-3 space-y-3">
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-emerald-300/80 font-semibold">
-                    Air carton packing (25 kg carton)
-                  </p>
-                  <p className="text-[11px] text-gray-500 mt-0.5">
-                    Carton {Number(shipping.meta?.airCartonLengthIn ?? config.shipping.airCartonLengthIn)}{" "}
-                    × {Number(shipping.meta?.airCartonWidthIn ?? config.shipping.airCartonWidthIn)}{" "}
-                    × {Number(shipping.meta?.airCartonHeightIn ?? config.shipping.airCartonHeightIn)}{" "}
-                    in · max fill{" "}
-                    {Number(shipping.meta?.airCartonMaxKg ?? config.shipping.airCartonMaxKg)} kg
-                    (safety)
-                  </p>
-                </div>
+            {(config.shipping.weightMode ?? "actual") === "volumetric" && (() => {
+              type CartonOpt = {
+                id: string;
+                label: string;
+                unitsByVolume: number;
+                unitsByWeight: number;
+                unitsPerCarton: number;
+                cartonsNeeded: number;
+                limitedBy: string;
+                emptyVolumePct: number;
+                emptyWeightKg: number;
+                emptySlots: number;
+                chargeableKg: number;
+                cartonLengthIn: number;
+                cartonWidthIn: number;
+                cartonHeightIn: number;
+                cartonMaxKg: number;
+                labeledKg: number;
+              };
+              let cartonOptions: CartonOpt[] = [];
+              try {
+                const raw = shipping.meta?.airCartonOptionsJson;
+                if (typeof raw === "string" && raw) {
+                  cartonOptions = JSON.parse(raw) as CartonOpt[];
+                }
+              } catch {
+                cartonOptions = [];
+              }
+              const bestId = String(shipping.meta?.bestCartonId ?? "");
+              const bestLabel = String(shipping.meta?.bestCartonLabel ?? "");
+              const maxFillKg = Number(shipping.meta?.airCartonMaxKg ?? 0);
+              const labeledKg = Number(
+                shipping.meta?.chargeablePerCartonKg ??
+                  shipping.meta?.airCartonLabeledKg ??
+                  0,
+              );
+              const unitsOk = Number(shipping.meta?.unitsPerCarton ?? 0) > 0;
+              // Always show comparison rows (even when some/all don't fit)
+              const showTable = cartonOptions.length > 0;
 
-                {Number(shipping.meta?.unitsPerCarton ?? 0) > 0 ? (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3 text-xs">
-                      <div className="rounded-md bg-gray-900/60 border border-gray-800 px-3 py-2.5">
-                        <p className="text-gray-500">Units / carton</p>
-                        <p className="text-lg font-bold text-white tabular-nums mt-0.5">
-                          {Number(shipping.meta?.unitsPerCarton ?? 0).toLocaleString("en-US")}
-                        </p>
-                        <p className="text-[10px] text-gray-600 mt-1">
-                          Volume fit{" "}
-                          {Number(shipping.meta?.unitsByVolume ?? 0).toLocaleString("en-US")} · weight
-                          fit{" "}
-                          {Number(shipping.meta?.unitsByWeight ?? 0).toLocaleString("en-US")}
-                          {shipping.meta?.cartonLimitedBy === "volume"
-                            ? " · limited by space"
-                            : shipping.meta?.cartonLimitedBy === "weight"
-                              ? ` · limited by ${Number(shipping.meta?.airCartonMaxKg ?? config.shipping.airCartonMaxKg)} kg`
-                              : shipping.meta?.cartonLimitedBy === "both"
-                                ? " · space & weight equal"
-                                : ""}
-                        </p>
-                      </div>
-                      <div className="rounded-md bg-gray-900/60 border border-gray-800 px-3 py-2.5">
-                        <p className="text-gray-500">Total cartons needed</p>
-                        <p className="text-lg font-bold text-pacify-gold tabular-nums mt-0.5">
-                          {Number(shipping.meta?.cartonsNeeded ?? 0).toLocaleString("en-US")}
-                        </p>
-                        <p className="text-[10px] text-gray-600 mt-1">
-                          For {quantity.toLocaleString("en-US")} units
-                        </p>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-gray-500 leading-snug">
-                      Chargeable weight = cartons ×{" "}
-                      {Number(
-                        shipping.meta?.airCartonMaxKg ?? config.shipping.airCartonMaxKg,
-                      )}{" "}
-                      kg (each air carton is billed at the full safety weight even if product
-                      volumetric weight inside is lower). Product vol. total{" "}
-                      {Number(shipping.meta?.productTotalKg ?? 0).toLocaleString("en-US", {
-                        maximumFractionDigits: 2,
-                      })}{" "}
-                      kg.
+              const fitLabel = (
+                feasible: boolean,
+                limitedBy: string,
+                vol: number,
+                wt: number,
+              ) => {
+                if (!feasible) {
+                  if (vol < 1 && wt < 1) return "Too big & heavy";
+                  if (vol < 1) return "Too big (space)";
+                  if (wt < 1) return "Too heavy";
+                  return "Does not fit";
+                }
+                if (limitedBy === "volume") return "Limited by space";
+                if (limitedBy === "weight") return "Limited by weight";
+                if (limitedBy === "both") return "Space & weight equal";
+                return "OK";
+              };
+
+              return (
+                <div className="mt-4 rounded-lg border border-emerald-500/20 bg-gray-950/40 p-3 space-y-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide text-emerald-300/80 font-semibold">
+                      Air carton packing — best pick
+                    </p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Compares all carton sizes. Chargeable = cartons × carton rating
+                      (e.g. 25 kg). Fill capacity uses the safety limit (e.g. 22 kg).
                     </p>
                   </div>
-                ) : (
-                  <p className="text-xs text-amber-300/90">
-                    Box does not fit in the air carton by size, or one unit exceeds the{" "}
-                    {Number(shipping.meta?.airCartonMaxKg ?? config.shipping.airCartonMaxKg)} kg
-                    limit.
-                  </p>
-                )}
-              </div>
-            )}
+
+                  {unitsOk ? (
+                    <div className="space-y-3">
+                      <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-2.5">
+                        <p className="text-[10px] uppercase tracking-wide text-emerald-300/70 font-semibold">
+                          Recommended
+                        </p>
+                        <p className="text-sm font-semibold text-white mt-0.5">
+                          {bestLabel || "Best carton"}{" "}
+                          <span className="text-gray-500 font-normal">
+                            ({Number(shipping.meta?.airCartonLengthIn ?? 0)} ×{" "}
+                            {Number(shipping.meta?.airCartonWidthIn ?? 0)} ×{" "}
+                            {Number(shipping.meta?.airCartonHeightIn ?? 0)} in · rating{" "}
+                            {labeledKg} kg · max fill {maxFillKg} kg)
+                          </span>
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div className="rounded-md bg-gray-900/60 border border-gray-800 px-3 py-2.5">
+                          <p className="text-gray-500">Units / carton</p>
+                          <p className="text-lg font-bold text-white tabular-nums mt-0.5">
+                            {Number(shipping.meta?.unitsPerCarton ?? 0).toLocaleString(
+                              "en-US",
+                            )}
+                          </p>
+                          <p className="text-[10px] text-gray-600 mt-1">
+                            Volume fit{" "}
+                            {Number(shipping.meta?.unitsByVolume ?? 0).toLocaleString(
+                              "en-US",
+                            )}{" "}
+                            · weight fit{" "}
+                            {Number(shipping.meta?.unitsByWeight ?? 0).toLocaleString(
+                              "en-US",
+                            )}
+                            {shipping.meta?.cartonLimitedBy === "volume"
+                              ? " · limited by space"
+                              : shipping.meta?.cartonLimitedBy === "weight"
+                                ? ` · limited by ${maxFillKg} kg fill`
+                                : shipping.meta?.cartonLimitedBy === "both"
+                                  ? " · space & weight equal"
+                                  : ""}
+                          </p>
+                          <p className="text-[10px] text-gray-600 mt-0.5">
+                            Empty space {Number(shipping.meta?.emptyVolumePct ?? 0)}% · empty
+                            slots{" "}
+                            {Number(shipping.meta?.emptySlots ?? 0).toLocaleString("en-US")} ·
+                            unused fill{" "}
+                            {Number(shipping.meta?.emptyWeightKg ?? 0).toLocaleString(
+                              "en-US",
+                              { maximumFractionDigits: 2 },
+                            )}{" "}
+                            kg
+                          </p>
+                        </div>
+                        <div className="rounded-md bg-gray-900/60 border border-gray-800 px-3 py-2.5">
+                          <p className="text-gray-500">Total cartons needed</p>
+                          <p className="text-lg font-bold text-pacify-gold tabular-nums mt-0.5">
+                            {Number(shipping.meta?.cartonsNeeded ?? 0).toLocaleString(
+                              "en-US",
+                            )}
+                          </p>
+                          <p className="text-[10px] text-gray-600 mt-1">
+                            For {quantity.toLocaleString("en-US")} units · chargeable{" "}
+                            {Number(shipping.meta?.totalKg ?? 0).toLocaleString("en-US", {
+                              maximumFractionDigits: 2,
+                            })}{" "}
+                            kg
+                          </p>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-gray-500 leading-snug">
+                        Chargeable weight = {Number(shipping.meta?.cartonsNeeded ?? 0)}{" "}
+                        cartons × {labeledKg} kg ={" "}
+                        {Number(shipping.meta?.totalKg ?? 0).toLocaleString("en-US", {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        kg. Product vol. total{" "}
+                        {Number(shipping.meta?.productTotalKg ?? 0).toLocaleString("en-US", {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        kg.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-amber-300/90">
+                      No carton can hold this box (too large or one unit exceeds every
+                      carton&apos;s fill limit). See the comparison below for volume/weight
+                      fit per size.
+                    </p>
+                  )}
+
+                  {showTable && (
+                    <div className="overflow-x-auto rounded-lg border border-gray-800">
+                      <table className="w-full text-[11px]">
+                        <thead>
+                          <tr className="border-b border-gray-800 bg-gray-900/80 text-gray-500">
+                            <th className="px-2 py-1.5 text-left font-medium">Carton</th>
+                            <th className="px-2 py-1.5 text-right font-medium">
+                              Vol fit
+                            </th>
+                            <th className="px-2 py-1.5 text-right font-medium">
+                              Wt fit
+                            </th>
+                            <th className="px-2 py-1.5 text-right font-medium">
+                              Units / carton
+                            </th>
+                            <th className="px-2 py-1.5 text-right font-medium">
+                              Cartons
+                            </th>
+                            <th className="px-2 py-1.5 text-right font-medium">
+                              Chargeable
+                            </th>
+                            <th className="px-2 py-1.5 text-right font-medium">
+                              Empty %
+                            </th>
+                            <th className="px-2 py-1.5 text-right font-medium">
+                              Empty slots
+                            </th>
+                            <th className="px-2 py-1.5 text-left font-medium">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-800/60">
+                          {cartonOptions.map((opt) => {
+                            const isBest = opt.id === bestId && unitsOk;
+                            const feasible = opt.unitsPerCarton >= 1;
+                            return (
+                              <tr
+                                key={opt.id}
+                                className={clsx(
+                                  isBest && "bg-emerald-500/10",
+                                  !feasible && "opacity-70",
+                                )}
+                              >
+                                <td className="px-2 py-1.5 text-gray-300">
+                                  <span className="font-medium text-white">
+                                    {opt.label}
+                                  </span>
+                                  {isBest && (
+                                    <span className="ml-1.5 text-[9px] uppercase tracking-wide text-emerald-400 font-semibold">
+                                      best
+                                    </span>
+                                  )}
+                                  <span className="block text-[10px] text-gray-600">
+                                    {opt.cartonLengthIn} × {opt.cartonWidthIn} ×{" "}
+                                    {opt.cartonHeightIn} in · charge {opt.labeledKg} kg ·
+                                    fill {opt.cartonMaxKg} kg
+                                  </span>
+                                </td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-gray-300">
+                                  {opt.unitsByVolume.toLocaleString("en-US")}
+                                </td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-gray-300">
+                                  {opt.unitsByWeight.toLocaleString("en-US")}
+                                </td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-white font-medium">
+                                  {feasible
+                                    ? opt.unitsPerCarton.toLocaleString("en-US")
+                                    : "0"}
+                                </td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-gray-300">
+                                  {feasible
+                                    ? opt.cartonsNeeded.toLocaleString("en-US")
+                                    : "—"}
+                                </td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-white font-medium">
+                                  {feasible
+                                    ? `${opt.chargeableKg.toLocaleString("en-US", {
+                                        maximumFractionDigits: 2,
+                                      })} kg`
+                                    : "—"}
+                                </td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-gray-400">
+                                  {feasible ? `${opt.emptyVolumePct}%` : "—"}
+                                </td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-gray-400">
+                                  {feasible
+                                    ? opt.emptySlots.toLocaleString("en-US")
+                                    : "—"}
+                                </td>
+                                <td className="px-2 py-1.5 text-gray-500">
+                                  {fitLabel(
+                                    feasible,
+                                    opt.limitedBy,
+                                    opt.unitsByVolume,
+                                    opt.unitsByWeight,
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </Card>
         )}
         {extra && (

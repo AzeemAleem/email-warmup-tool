@@ -110,12 +110,28 @@ export function calcBoxesPerCartonByVolume(
 
 export type AirCartonLimit = "volume" | "weight" | "both" | "none";
 
+export interface AirCartonPackingStats {
+  unitsByVolume: number;
+  unitsByWeight: number;
+  unitsPerCarton: number;
+  cartonsNeeded: number;
+  limitedBy: AirCartonLimit;
+  /** Approximate unused volume % after packing unitsPerCarton boxes */
+  emptyVolumePct: number;
+  /** Unused kg capacity vs billed max */
+  emptyWeightKg: number;
+  /** Volume slots unused because of weight limit */
+  emptySlots: number;
+  chargeableKg: number;
+}
+
 /**
  * Air carton fill for volumetric shipping:
- * - volume: how many closed boxes fit in 21×17×16 in (any orientation)
- * - weight: floor(maxKg / perUnitKg) with safety max (default 22 kg)
+ * - volume: how many closed boxes fit (any orientation)
+ * - weight: floor(maxFillKg / perUnitKg) — e.g. 25 kg carton fills to 22 kg
  * - unitsPerCarton = min(volume, weight)
  * - cartonsNeeded = ceil(quantity / unitsPerCarton)
+ * - chargeableKg = cartonsNeeded × labeledKg (bill the full carton rating, not fill)
  */
 export function calcAirCartonPacking(opts: {
   boxLengthIn: number;
@@ -126,14 +142,11 @@ export function calcAirCartonPacking(opts: {
   cartonLengthIn: number;
   cartonWidthIn: number;
   cartonHeightIn: number;
-  cartonMaxKg: number;
-}): {
-  unitsByVolume: number;
-  unitsByWeight: number;
-  unitsPerCarton: number;
-  cartonsNeeded: number;
-  limitedBy: AirCartonLimit;
-} | null {
+  /** Max product weight that fits (safety fill), e.g. 22 for a 25 kg carton */
+  cartonMaxFillKg: number;
+  /** Carton rating used for billing, e.g. 25 */
+  chargeKgPerCarton: number;
+}): AirCartonPackingStats | null {
   const {
     boxLengthIn,
     boxWidthIn,
@@ -143,12 +156,14 @@ export function calcAirCartonPacking(opts: {
     cartonLengthIn,
     cartonWidthIn,
     cartonHeightIn,
-    cartonMaxKg,
+    cartonMaxFillKg,
+    chargeKgPerCarton,
   } = opts;
 
   if (!Number.isFinite(perUnitKg) || perUnitKg <= 0) return null;
   if (!Number.isInteger(quantity) || quantity < 1) return null;
-  if (!(cartonMaxKg > 0) || !Number.isFinite(cartonMaxKg)) return null;
+  if (!(cartonMaxFillKg > 0) || !Number.isFinite(cartonMaxFillKg)) return null;
+  if (!(chargeKgPerCarton > 0) || !Number.isFinite(chargeKgPerCarton)) return null;
 
   const unitsByVolume = calcBoxesPerCartonByVolume(
     boxLengthIn,
@@ -158,15 +173,28 @@ export function calcAirCartonPacking(opts: {
     cartonWidthIn,
     cartonHeightIn,
   );
-  const unitsByWeight = Math.floor(cartonMaxKg / perUnitKg);
+  const unitsByWeight = Math.floor(cartonMaxFillKg / perUnitKg);
+
+  const cartonVol = cartonLengthIn * cartonWidthIn * cartonHeightIn;
+  const boxVol = boxLengthIn * boxWidthIn * boxHeightIn;
 
   if (unitsByVolume < 1 || unitsByWeight < 1) {
+    const limitedBy: AirCartonLimit =
+      unitsByVolume < 1 && unitsByWeight < 1
+        ? "both"
+        : unitsByVolume < 1
+          ? "volume"
+          : "weight";
     return {
       unitsByVolume,
       unitsByWeight,
       unitsPerCarton: 0,
       cartonsNeeded: 0,
-      limitedBy: "none",
+      limitedBy,
+      emptyVolumePct: 100,
+      emptyWeightKg: cartonMaxFillKg,
+      emptySlots: Math.max(0, unitsByVolume),
+      chargeableKg: 0,
     };
   }
 
@@ -179,11 +207,101 @@ export function calcAirCartonPacking(opts: {
         ? "volume"
         : "weight";
 
+  const usedVol = unitsPerCarton * boxVol;
+  const emptyVolumePct =
+    cartonVol > 0
+      ? Math.max(0, Math.min(100, ((cartonVol - usedVol) / cartonVol) * 100))
+      : 0;
+  const emptyWeightKg = Math.max(0, cartonMaxFillKg - unitsPerCarton * perUnitKg);
+  const emptySlots = Math.max(0, unitsByVolume - unitsPerCarton);
+
   return {
     unitsByVolume,
     unitsByWeight,
     unitsPerCarton,
     cartonsNeeded,
     limitedBy,
+    emptyVolumePct: Math.round(emptyVolumePct * 10) / 10,
+    emptyWeightKg: roundWeightKg(emptyWeightKg, 3),
+    emptySlots,
+    chargeableKg: roundWeightKg(cartonsNeeded * chargeKgPerCarton, 4),
   };
+}
+
+export interface AirCartonCandidate extends AirCartonPackingStats {
+  id: string;
+  label: string;
+  lengthIn: number;
+  widthIn: number;
+  heightIn: number;
+  labeledKg: number;
+  billedKg: number;
+  feasible: boolean;
+}
+
+/**
+ * Evaluate every air carton and pick the lowest chargeable weight.
+ * Ties: fewer cartons, then smaller labeled carton.
+ */
+export function selectBestAirCarton(opts: {
+  boxLengthIn: number;
+  boxWidthIn: number;
+  boxHeightIn: number;
+  perUnitKg: number;
+  quantity: number;
+  cartons: readonly {
+    id: string;
+    label: string;
+    lengthIn: number;
+    widthIn: number;
+    heightIn: number;
+    labeledKg: number;
+    billedKg: number;
+  }[];
+}): { best: AirCartonCandidate | null; options: AirCartonCandidate[] } {
+  const options: AirCartonCandidate[] = opts.cartons.map((c) => {
+    const packing = calcAirCartonPacking({
+      boxLengthIn: opts.boxLengthIn,
+      boxWidthIn: opts.boxWidthIn,
+      boxHeightIn: opts.boxHeightIn,
+      perUnitKg: opts.perUnitKg,
+      quantity: opts.quantity,
+      cartonLengthIn: c.lengthIn,
+      cartonWidthIn: c.widthIn,
+      cartonHeightIn: c.heightIn,
+      cartonMaxFillKg: c.billedKg,
+      chargeKgPerCarton: c.labeledKg,
+    });
+    const feasible =
+      packing != null && packing.unitsPerCarton >= 1 && packing.cartonsNeeded >= 1;
+    return {
+      id: c.id,
+      label: c.label,
+      lengthIn: c.lengthIn,
+      widthIn: c.widthIn,
+      heightIn: c.heightIn,
+      labeledKg: c.labeledKg,
+      billedKg: c.billedKg,
+      feasible,
+      unitsByVolume: packing?.unitsByVolume ?? 0,
+      unitsByWeight: packing?.unitsByWeight ?? 0,
+      unitsPerCarton: packing?.unitsPerCarton ?? 0,
+      cartonsNeeded: packing?.cartonsNeeded ?? 0,
+      limitedBy: packing?.limitedBy ?? "none",
+      emptyVolumePct: packing?.emptyVolumePct ?? 100,
+      emptyWeightKg: packing?.emptyWeightKg ?? c.billedKg,
+      emptySlots: packing?.emptySlots ?? 0,
+      // Prefer packing chargeable; if packing null, 0
+      chargeableKg: packing?.chargeableKg ?? 0,
+    };
+  });
+
+  const feasible = options.filter((o) => o.feasible);
+  feasible.sort((a, b) => {
+    if (a.chargeableKg !== b.chargeableKg) return a.chargeableKg - b.chargeableKg;
+    if (a.cartonsNeeded !== b.cartonsNeeded) return a.cartonsNeeded - b.cartonsNeeded;
+    return a.labeledKg - b.labeledKg;
+  });
+
+  return { best: feasible[0] ?? null, options };
 }

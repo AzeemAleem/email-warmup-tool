@@ -78,7 +78,7 @@ export interface CostLineResult {
   /** Line total (already rounded) */
   total: number;
   /** Extra display fields for the UI (GSM, open size, etc.) */
-  meta?: Record<string, string | number | boolean>;
+  meta?: Record<string, string | number | boolean | null>;
   /**
    * When true, show the row (e.g. "N/A") but exclude from grand total.
    */

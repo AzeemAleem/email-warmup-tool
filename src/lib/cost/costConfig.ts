@@ -91,6 +91,18 @@ export interface WeightConfig {
 /** How shipping weight is measured */
 export type ShippingWeightMode = "actual" | "volumetric";
 
+export interface AirCartonConfig {
+  id: string;
+  label: string;
+  lengthIn: number;
+  widthIn: number;
+  heightIn: number;
+  /** Carton rating for billing (e.g. 25) — chargeable = cartons × labeledKg */
+  labeledKg: number;
+  /** Max fill capacity for packing (e.g. 25 kg carton → 22) */
+  billedKg: number;
+}
+
 export interface ShippingConfig {
   /** PKR per kg (default 3,000) */
   ratePerKg: number;
@@ -98,15 +110,8 @@ export interface ShippingConfig {
   weightMode: ShippingWeightMode;
   /** Volumetric divisor (default 5,000) — (L×W×H cm) / divisor = kg */
   volumetricDivisor: number;
-  /**
-   * Air “25 kg” carton inner size (inches).
-   * Used only in volumetric mode to estimate units/carton and carton count.
-   */
-  airCartonLengthIn: number;
-  airCartonWidthIn: number;
-  airCartonHeightIn: number;
-  /** Safety max fill weight per air carton (kg). Default 22 (not full 25). */
-  airCartonMaxKg: number;
+  /** Air carton catalog — best option is chosen automatically */
+  airCartons: AirCartonConfig[];
 }
 
 export interface FxConfig {
@@ -205,10 +210,15 @@ export const DEFAULT_SHIPPING_CONFIG: Readonly<ShippingConfig> = {
   ratePerKg: 3000,
   weightMode: "actual",
   volumetricDivisor: 5000,
-  airCartonLengthIn: 21,
-  airCartonWidthIn: 17,
-  airCartonHeightIn: 16,
-  airCartonMaxKg: 22,
+  airCartons: [
+    { id: "25kg", label: "25 kg", lengthIn: 21, widthIn: 17, heightIn: 16, labeledKg: 25, billedKg: 22 },
+    { id: "20kg", label: "20 kg", lengthIn: 18.9, widthIn: 15.7, heightIn: 15.4, labeledKg: 20, billedKg: 18 },
+    { id: "15kg", label: "15 kg", lengthIn: 16.5, widthIn: 14.2, heightIn: 14.6, labeledKg: 15, billedKg: 13 },
+    { id: "10kg", label: "10 kg", lengthIn: 13.4, widthIn: 12.6, heightIn: 13.8, labeledKg: 10, billedKg: 9 },
+    { id: "5kg", label: "5 kg", lengthIn: 13.4, widthIn: 12.6, heightIn: 7.1, labeledKg: 5, billedKg: 4.5 },
+    { id: "2_5kg", label: "2.5 kg", lengthIn: 13.4, widthIn: 12.6, heightIn: 3.5, labeledKg: 2.5, billedKg: 2.2 },
+    { id: "1_5kg", label: "1.5 kg", lengthIn: 13.4, widthIn: 7.1, heightIn: 3.1, labeledKg: 1.5, billedKg: 1.3 },
+  ],
 };
 
 export const DEFAULT_FX_CONFIG: Readonly<FxConfig> = {

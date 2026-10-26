@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ClipboardDocumentIcon,
   ArrowPathIcon,
@@ -16,6 +16,7 @@ import {
   DEFAULT_OPTIONS,
   formatLength,
   fromMm,
+  openSizeToAllUnits,
   toMm,
   type LengthUnit,
   type MailerBoxResultAllUnits,
@@ -81,6 +82,9 @@ export default function MailerBoxCalculatorPage() {
     String(DEFAULT_OPTIONS.paddingHIn ?? 1),
   );
   const [copied, setCopied] = useState(false);
+  const [openOverride, setOpenOverride] = useState(false);
+  const [openWidthRaw, setOpenWidthRaw] = useState("");
+  const [openHeightRaw, setOpenHeightRaw] = useState("");
 
   function switchUnit(next: LengthUnit) {
     if (next === unit) return;
@@ -94,6 +98,8 @@ export default function MailerBoxCalculatorPage() {
     setLength((v) => convertField(v));
     setWidth((v) => convertField(v));
     setHeight((v) => convertField(v));
+    setOpenWidthRaw((v) => convertField(v));
+    setOpenHeightRaw((v) => convertField(v));
     setFoldInput(formatForInput(fromMm(foldAllowanceMm, next), next));
     setUnit(next);
   }
@@ -118,7 +124,7 @@ export default function MailerBoxCalculatorPage() {
   const W = parsePositive(width);
   const H = parsePositive(height);
 
-  const result: MailerBoxResultAllUnits | null = useMemo(() => {
+  const calculated: MailerBoxResultAllUnits | null = useMemo(() => {
     if (L == null || W == null || H == null) return null;
     if (!Number.isFinite(foldAllowanceMm) || foldAllowanceMm < 0) return null;
     return calcMailerBox(
@@ -127,6 +133,24 @@ export default function MailerBoxCalculatorPage() {
       { foldAllowanceMm },
     );
   }, [L, W, H, unit, foldAllowanceMm]);
+
+  useEffect(() => {
+    if (!calculated || openOverride) return;
+    setOpenWidthRaw(formatForInput(calculated[unit].openWidth, unit));
+    setOpenHeightRaw(formatForInput(calculated[unit].openHeight, unit));
+  }, [calculated, unit, openOverride]);
+
+  const effectiveOpen: MailerBoxResultAllUnits | null = useMemo(() => {
+    if (openOverride) {
+      const w = parsePositive(openWidthRaw);
+      const h = parsePositive(openHeightRaw);
+      if (w == null || h == null) return null;
+      return openSizeToAllUnits(toMm(w, unit), toMm(h, unit));
+    }
+    return calculated;
+  }, [openOverride, openWidthRaw, openHeightRaw, unit, calculated]);
+
+  const result = effectiveOpen;
 
   const errors = {
     length: fieldError(length, touched.length),
@@ -148,13 +172,24 @@ export default function MailerBoxCalculatorPage() {
     setPaddingWInput(String(DEFAULT_OPTIONS.paddingWIn ?? 1));
     setPaddingHInput(String(DEFAULT_OPTIONS.paddingHIn ?? 1));
     setCopied(false);
+    setOpenOverride(false);
+    setOpenWidthRaw("");
+    setOpenHeightRaw("");
+  }
+
+  function clearOpenOverride() {
+    setOpenOverride(false);
+    if (calculated) {
+      setOpenWidthRaw(formatForInput(calculated[unit].openWidth, unit));
+      setOpenHeightRaw(formatForInput(calculated[unit].openHeight, unit));
+    }
   }
 
   async function copyResult() {
     if (!result) return;
     const primary = result[unit];
     const text = [
-      `RETT Mailer Box Open Size (${unit})`,
+      `RETT Mailer Box Open Size (${unit})${openOverride ? " [manual override]" : ""}`,
       `Open Width:  ${formatLength(primary.openWidth, unit)} ${unit}`,
       `Open Height: ${formatLength(primary.openHeight, unit)} ${unit}`,
       "",
@@ -386,84 +421,174 @@ export default function MailerBoxCalculatorPage() {
           </div>
         </div>
 
-        {!result ? (
+        {!calculated ? (
           <p className="text-sm text-gray-600 py-6 text-center">
             Enter positive Length, Width, and Height to see the open size.
           </p>
         ) : (
           <div className="space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-gray-500">
+                Calculated from closed size — edit below to override. Sheet nesting
+                uses the effective open size.
+              </p>
+              {openOverride && (
+                <button
+                  type="button"
+                  onClick={clearOpenOverride}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-amber-500/40 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20 transition-colors"
+                >
+                  <ArrowPathIcon className="h-3.5 w-3.5" />
+                  Use calculated
+                </button>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="rounded-lg bg-indigo-500/10 border border-indigo-500/20 p-4">
-                <p className="text-xs font-medium text-indigo-300/70 uppercase tracking-wide">
+              <div
+                className={clsx(
+                  "rounded-lg p-4 border",
+                  openOverride
+                    ? "bg-amber-500/10 border-amber-500/30"
+                    : "bg-indigo-500/10 border-indigo-500/20",
+                )}
+              >
+                <label className="text-xs font-medium text-indigo-300/70 uppercase tracking-wide">
                   Open Width
-                </p>
-                <p className="mt-1 text-3xl font-bold text-indigo-300 tabular-nums">
-                  {formatLength(result[unit].openWidth, unit)}
-                  <span className="text-base font-medium text-indigo-400/70 ml-1.5">
+                </label>
+                <div className="mt-1.5 relative">
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="any"
+                    min="0"
+                    value={openWidthRaw}
+                    onChange={(e) => {
+                      setOpenOverride(true);
+                      setOpenWidthRaw(e.target.value);
+                    }}
+                    className={clsx(
+                      "w-full px-3 py-2 bg-gray-900/60 border rounded-lg text-2xl font-bold tabular-nums focus:outline-none focus:ring-1",
+                      openOverride
+                        ? "border-amber-500/40 text-amber-200 focus:border-amber-400 focus:ring-amber-500/30"
+                        : "border-indigo-500/30 text-indigo-300 focus:border-indigo-400 focus:ring-indigo-500/30",
+                    )}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
                     {unit}
                   </span>
-                </p>
-                <p className="text-[11px] text-gray-600 mt-1">
-                  L + 4H + fold allowance
+                </div>
+                <p className="text-[11px] text-gray-600 mt-1.5">
+                  Formula: L + 4H + fold allowance →{" "}
+                  {formatLength(calculated[unit].openWidth, unit)} {unit}
                 </p>
               </div>
-              <div className="rounded-lg bg-cyan-500/10 border border-cyan-500/20 p-4">
-                <p className="text-xs font-medium text-cyan-300/70 uppercase tracking-wide">
+              <div
+                className={clsx(
+                  "rounded-lg p-4 border",
+                  openOverride
+                    ? "bg-amber-500/10 border-amber-500/30"
+                    : "bg-cyan-500/10 border-cyan-500/20",
+                )}
+              >
+                <label className="text-xs font-medium text-cyan-300/70 uppercase tracking-wide">
                   Open Height
-                </p>
-                <p className="mt-1 text-3xl font-bold text-cyan-300 tabular-nums">
-                  {formatLength(result[unit].openHeight, unit)}
-                  <span className="text-base font-medium text-cyan-400/70 ml-1.5">
+                </label>
+                <div className="mt-1.5 relative">
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="any"
+                    min="0"
+                    value={openHeightRaw}
+                    onChange={(e) => {
+                      setOpenOverride(true);
+                      setOpenHeightRaw(e.target.value);
+                    }}
+                    className={clsx(
+                      "w-full px-3 py-2 bg-gray-900/60 border rounded-lg text-2xl font-bold tabular-nums focus:outline-none focus:ring-1",
+                      openOverride
+                        ? "border-amber-500/40 text-amber-200 focus:border-amber-400 focus:ring-amber-500/30"
+                        : "border-cyan-500/30 text-cyan-300 focus:border-cyan-400 focus:ring-cyan-500/30",
+                    )}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
                     {unit}
                   </span>
+                </div>
+                <p className="text-[11px] text-gray-600 mt-1.5">
+                  Formula: 2W + 3H →{" "}
+                  {formatLength(calculated[unit].openHeight, unit)} {unit}
                 </p>
-                <p className="text-[11px] text-gray-600 mt-1">2W + 3H</p>
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-gray-800">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-800 bg-gray-800/40">
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
-                      Unit
-                    </th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-                      Open Width
-                    </th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-                      Open Height
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-800/60">
-                  {UNITS.map((u) => (
-                    <tr
-                      key={u}
-                      className={clsx(u === unit && "bg-indigo-500/5")}
-                    >
-                      <td className="px-3 py-2 text-gray-400 font-medium">{u}</td>
-                      <td className="px-3 py-2 text-right text-white tabular-nums">
-                        {formatLength(result[u].openWidth, u)}
-                      </td>
-                      <td className="px-3 py-2 text-right text-white tabular-nums">
-                        {formatLength(result[u].openHeight, u)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {result ? (
+              <p className="text-sm text-gray-400">
+                Effective:{" "}
+                <span className="text-white font-semibold tabular-nums">
+                  {formatLength(result[unit].openWidth, unit)} ×{" "}
+                  {formatLength(result[unit].openHeight, unit)} {unit}
+                </span>
+                {openOverride && (
+                  <span className="ml-2 text-amber-300/80 text-xs font-medium">
+                    (manual override)
+                  </span>
+                )}
+              </p>
+            ) : (
+              <p className="text-sm text-amber-300/90">
+                Enter positive open width and height to continue.
+              </p>
+            )}
 
-            <FlatLayoutPreview
-              openWidth={result[unit].openWidth}
-              openHeight={result[unit].openHeight}
-              unit={unit}
-              length={L!}
-              width={W!}
-              height={H!}
-              foldAllowance={fromMm(foldAllowanceMm, unit)}
-            />
+            {result && (
+              <>
+                <div className="overflow-x-auto rounded-lg border border-gray-800">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-800 bg-gray-800/40">
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
+                          Unit
+                        </th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                          Open Width
+                        </th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
+                          Open Height
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800/60">
+                      {UNITS.map((u) => (
+                        <tr
+                          key={u}
+                          className={clsx(u === unit && "bg-indigo-500/5")}
+                        >
+                          <td className="px-3 py-2 text-gray-400 font-medium">{u}</td>
+                          <td className="px-3 py-2 text-right text-white tabular-nums">
+                            {formatLength(result[u].openWidth, u)}
+                          </td>
+                          <td className="px-3 py-2 text-right text-white tabular-nums">
+                            {formatLength(result[u].openHeight, u)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <FlatLayoutPreview
+                  openWidth={result[unit].openWidth}
+                  openHeight={result[unit].openHeight}
+                  unit={unit}
+                  length={L!}
+                  width={W!}
+                  height={H!}
+                  foldAllowance={fromMm(foldAllowanceMm, unit)}
+                />
+              </>
+            )}
           </div>
         )}
       </Card>

@@ -21,6 +21,7 @@ export {
   formatLength,
   fromMm,
   nestingSizeIn,
+  openSizeToAllUnits,
   roundForUnit,
   toMm,
   unitLabel,

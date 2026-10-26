@@ -959,20 +959,39 @@ assert.equal(
     { lengthCm: Lcm, widthCm: Wcm, heightCm: Hcm },
   )!;
   assert.equal(volShip.weightMode, "volumetric");
-  // Chargeable weight = cartonsNeeded × 22 kg (not product vol. total)
+  // Chargeable weight = cartonsNeeded × labeled kg (25, not fill 22)
   assert.ok(volShip.airCarton);
+  assert.ok(volShip.airCartonOptions.length >= 1);
   assert.equal(
     volShip.totalKg,
-    volShip.airCarton!.cartonsNeeded * volShip.airCarton!.cartonMaxKg,
+    volShip.airCarton!.cartonsNeeded * volShip.airCarton!.labeledKg,
   );
   assert.equal(
     volShip.total,
-    roundMoney(volShip.airCarton!.cartonsNeeded * 22 * 3000),
+    roundMoney(
+      volShip.airCarton!.cartonsNeeded * volShip.airCarton!.labeledKg * 3000,
+    ),
+  );
+  assert.equal(
+    volShip.airCarton!.chargeableKg,
+    volShip.airCarton!.cartonsNeeded * volShip.airCarton!.labeledKg,
   );
   assert.equal(
     volShip.productTotalKg,
     roundWeightKg(calcTotalWeightKg(volPer, 200)!, 4),
   );
+  // Best must be feasible and have the lowest chargeable among feasible options
+  const feasibleOpts = volShip.airCartonOptions.filter(
+    (o) => o.unitsPerCarton >= 1,
+  );
+  assert.ok(feasibleOpts.length >= 1);
+  const minChargeable = Math.min(...feasibleOpts.map((o) => o.chargeableKg));
+  assert.equal(volShip.airCarton!.chargeableKg, minChargeable);
+  assert.equal(volShip.airCarton!.id, feasibleOpts.sort((a, b) => {
+    if (a.chargeableKg !== b.chargeableKg) return a.chargeableKg - b.chargeableKg;
+    if (a.cartonsNeeded !== b.cartonsNeeded) return a.cartonsNeeded - b.cartonsNeeded;
+    return a.labeledKg - b.labeledKg;
+  })[0].id);
 
   const engineVol = runCostEngine(
     { openWidthIn: 10, openHeightIn: 25 },
@@ -1011,12 +1030,8 @@ assert.equal(
   assert.ok(missing);
   assert.equal(missing!.items.find((i) => i.id === "shipping"), undefined);
 
-  // Air carton packing (21×17×16 in, max 22 kg) — volumetric only
+  // Best air carton packing stats
   assert.ok(volShip.airCarton);
-  assert.equal(volShip.airCarton!.cartonLengthIn, 21);
-  assert.equal(volShip.airCarton!.cartonWidthIn, 17);
-  assert.equal(volShip.airCarton!.cartonHeightIn, 16);
-  assert.equal(volShip.airCarton!.cartonMaxKg, 22);
   assert.ok(volShip.airCarton!.unitsPerCarton >= 1);
   assert.equal(
     volShip.airCarton!.unitsPerCarton,
@@ -1028,6 +1043,10 @@ assert.equal(
   );
   assert.equal(shipLine.meta?.unitsPerCarton, volShip.airCarton!.unitsPerCarton);
   assert.equal(shipLine.meta?.cartonsNeeded, volShip.airCarton!.cartonsNeeded);
+  assert.equal(shipLine.meta?.bestCartonId, volShip.airCarton!.id);
+  assert.ok(typeof shipLine.meta?.airCartonOptionsJson === "string");
+  const metaOpts = JSON.parse(String(shipLine.meta?.airCartonOptionsJson));
+  assert.ok(Array.isArray(metaOpts) && metaOpts.length >= 7);
 }
 
 // ── Extra expenses ─────────────────────────────────────────────────────────
