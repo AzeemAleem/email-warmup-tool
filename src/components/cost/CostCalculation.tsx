@@ -2200,7 +2200,7 @@ export function CostCalculation({
                             )}
                           </p>
                           <p className="text-[10px] text-gray-600 mt-1">
-                            For {quantity.toLocaleString("en-US")} units · chargeable{" "}
+                            For {(quantity ?? 0).toLocaleString("en-US")} units · chargeable{" "}
                             {Number(shipping.meta?.totalKg ?? 0).toLocaleString("en-US", {
                               maximumFractionDigits: 2,
                             })}{" "}
