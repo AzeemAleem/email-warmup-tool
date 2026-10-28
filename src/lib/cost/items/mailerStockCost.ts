@@ -13,8 +13,17 @@ export interface MailerStockCostResult {
 }
 
 /**
+ * After adding padding inches, round to whole inches:
+ * .5 and above → round up (22.5 → 23), below .5 → round down (22.4 → 22).
+ */
+export function roundPaddedInches(value: number): number {
+  return Math.round(value);
+}
+
+/**
  * Mailer stock cost calculation:
  * - Add padding (default 2 inches) to both open size dimensions
+ * - Round padded size to whole inches (.5 up)
  * - Formula: (length × width × GSM × total sheets) / 15500 / 100
  * - Rate depends on material type (cardboard or kraft)
  */
@@ -35,8 +44,8 @@ export function calcMailerStockCost(
     return null;
   }
 
-  const paddedWidth = openWidthIn + config.paddingIn;
-  const paddedHeight = openHeightIn + config.paddingIn;
+  const paddedWidth = roundPaddedInches(openWidthIn + config.paddingIn);
+  const paddedHeight = roundPaddedInches(openHeightIn + config.paddingIn);
 
   const materialRate =
     config.materialType === "cardboard"

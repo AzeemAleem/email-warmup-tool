@@ -21,10 +21,18 @@ export function useCostTotals(
     profitRatio != null && Number.isFinite(profitRatio) && profitRatio > 0
       ? profitRatio
       : 1;
+  const shippingItem = result.items.find(
+    (i) => i.id === "shipping" && !i.excluded,
+  );
+  const shippingPkr = shippingItem?.total ?? 0;
+  /** Production = grand total excluding shipping */
+  const productionPkr = roundMoney(result.grandTotal - shippingPkr);
   const withoutProfitPkr = result.grandTotal;
   const withProfitPkr = roundMoney(withoutProfitPkr * ratio);
   const withoutProfitUsd = pkrToUsd(withoutProfitPkr, usdRate);
   const withProfitUsd = pkrToUsd(withProfitPkr, usdRate);
+  const productionUsd = pkrToUsd(productionPkr, usdRate);
+  const shippingUsd = pkrToUsd(shippingPkr, usdRate);
   const qty = quantity != null && quantity >= 1 ? quantity : null;
   const perUnitWithoutPkr = result.costPerUnit;
   const perUnitWithPkr = roundMoney(withProfitPkr / (qty ?? 1));
@@ -40,6 +48,10 @@ export function useCostTotals(
 
   return {
     ratio,
+    productionPkr,
+    shippingPkr,
+    productionUsd,
+    shippingUsd,
     withoutProfitPkr,
     withProfitPkr,
     withoutProfitUsd,
@@ -80,6 +92,21 @@ export function CostTotalsSummary({
       )}
     >
       <div className={clsx("flex flex-col", compact ? "gap-3" : "gap-4")}>
+        <div className="space-y-1.5 pb-3 border-b border-pacify-gold/20">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-xs font-medium text-gray-400">Production cost</p>
+            <p className="text-sm font-semibold text-white tabular-nums">
+              {formatPkrTotal(t.productionPkr)}
+            </p>
+          </div>
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-xs font-medium text-gray-400">Shipping cost</p>
+            <p className="text-sm font-semibold text-white tabular-nums">
+              {formatPkrTotal(t.shippingPkr)}
+            </p>
+          </div>
+        </div>
+
         <div>
           <p className="text-xs font-medium text-pacify-gold/80 uppercase tracking-wide">
             Total (PKR)
@@ -184,6 +211,10 @@ export function CostTotalsStickyBar({
             {formatPkrTotal(t.withProfitPkr)}
           </p>
           <p className="text-xs text-gray-400 tabular-nums">
+            Prod {formatPkrTotal(t.productionPkr)} · Ship{" "}
+            {formatPkrTotal(t.shippingPkr)}
+          </p>
+          <p className="text-xs text-gray-500 tabular-nums">
             Base {formatPkrTotal(t.withoutProfitPkr)}
             {t.withProfitUsd != null
               ? ` · ${formatUsd(t.withProfitUsd)}`

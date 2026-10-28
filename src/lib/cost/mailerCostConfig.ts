@@ -41,7 +41,7 @@ export interface MailerPastingConfig {
 }
 
 export interface MailerShippingConfig {
-  /** GSM for weight calculation (default 450) */
+  /** GSM for weight calculation (default 550) */
   gsm: number;
   /** Rate per kg (PKR, default 3000) */
   ratePerKg: number;
@@ -82,12 +82,14 @@ export const DEFAULT_MAILER_COST_CONFIG: Readonly<MailerCostConfig> = {
     fixedCost: 5000,
   },
   plates: {
-    costPerPlate: 2000,
+    // CMYK (4) × 4000 = 16,000 PKR default plates total
+    costPerPlate: 4000,
     baseMaxQty: 1000,
     midMaxQty: 2500,
   },
   printing: {
-    costPerColor: 3000,
+    // CMYK (4) × 4000 = 16,000 PKR default printing total
+    costPerColor: 4000,
   },
   die: {
     fixedCost: 5000,
@@ -96,7 +98,7 @@ export const DEFAULT_MAILER_COST_CONFIG: Readonly<MailerCostConfig> = {
     fixedCost: 5000,
   },
   shipping: {
-    gsm: 450,
+    gsm: 550,
     ratePerKg: 3000,
   },
   fx: {

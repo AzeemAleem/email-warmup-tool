@@ -1,5 +1,8 @@
 import type { MailerCostConfig } from "./mailerCostConfig";
-import { calcMailerStockCost } from "./items/mailerStockCost";
+import {
+  calcMailerStockCost,
+  roundPaddedInches,
+} from "./items/mailerStockCost";
 import { calcMailerLaminationCost } from "./items/mailerLaminationCost";
 import { calcMailerCorrugationCost } from "./items/mailerCorrugationCost";
 import { calcMailerShippingCost } from "./items/mailerShippingCost";
@@ -82,10 +85,10 @@ export function runMailerCostEngine(
   );
   const paddedOpenWidthIn = stockCalc
     ? stockCalc.paddedOpenWidthIn
-    : openWidthIn + config.stock.paddingIn;
+    : roundPaddedInches(openWidthIn + config.stock.paddingIn);
   const paddedOpenHeightIn = stockCalc
     ? stockCalc.paddedOpenHeightIn
-    : openHeightIn + config.stock.paddingIn;
+    : roundPaddedInches(openHeightIn + config.stock.paddingIn);
 
   if (stockCalc || extras.stockManualTotal != null) {
     const usedAutomatic = extras.stockManualTotal == null;
@@ -276,11 +279,11 @@ export function runMailerCostEngine(
     }
   }
 
-  // 9. Shipping — always include so the section stays visible while editing rates
+  // 9. Shipping — use padded (+2", rounded) dimensions; always include line
   {
     const shippingCalc = calcMailerShippingCost(
-      openWidthIn,
-      openHeightIn,
+      paddedOpenWidthIn,
+      paddedOpenHeightIn,
       quantity,
       config.shipping,
     );
@@ -296,8 +299,10 @@ export function runMailerCostEngine(
         totalWeightKg: shippingCalc?.totalWeightKg ?? 0,
         ratePerKg: config.shipping.ratePerKg,
         gsm: config.shipping.gsm,
-        openWidthIn,
-        openHeightIn,
+        openWidthIn: paddedOpenWidthIn,
+        openHeightIn: paddedOpenHeightIn,
+        paddedOpenWidthIn,
+        paddedOpenHeightIn,
         autoTotal,
         usedAutomatic,
       },

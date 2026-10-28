@@ -13,28 +13,29 @@ export interface MailerShippingCostResult {
 
 /**
  * Mailer shipping cost:
- * Weight (kg) = (length × width × GSM × total units / 15500) / 100
+ * Weight (kg) = (paddedLength × paddedWidth × GSM × total units / 15500) / 100
  * Cost = weight × ratePerKg
- * Note: Uses different GSM (default 450) than stock calculation
+ * Dimensions must already include +2" padding (and rounding).
+ * Note: Uses different GSM (default 550) than stock calculation.
  */
 export function calcMailerShippingCost(
-  openWidthIn: number,
-  openHeightIn: number,
+  paddedWidthIn: number,
+  paddedHeightIn: number,
   quantity: number,
   config: MailerShippingConfig,
 ): MailerShippingCostResult | null {
   if (!Number.isInteger(quantity) || quantity < 1) return null;
   if (
-    ![openWidthIn, openHeightIn, config.gsm, config.ratePerKg].every(
+    ![paddedWidthIn, paddedHeightIn, config.gsm, config.ratePerKg].every(
       (n) => Number.isFinite(n) && n > 0,
     )
   ) {
     return null;
   }
 
-  // Weight = (L × W × GSM × qty / 15500) / 100
+  // Weight = (L × W × GSM × qty / 15500) / 100  (padded open size)
   const totalWeightKg =
-    ((openWidthIn * openHeightIn * config.gsm * quantity) / 15500) / 100;
+    ((paddedWidthIn * paddedHeightIn * config.gsm * quantity) / 15500) / 100;
 
   const total = roundMoney(totalWeightKg * config.ratePerKg);
   const perUnit = roundMoney(total / quantity);
@@ -47,7 +48,7 @@ export function calcMailerShippingCost(
     totalWeightKg: Math.round(totalWeightKg * 100) / 100,
     ratePerKg: config.ratePerKg,
     gsm: config.gsm,
-    openWidthIn,
-    openHeightIn,
+    openWidthIn: paddedWidthIn,
+    openHeightIn: paddedHeightIn,
   };
 }

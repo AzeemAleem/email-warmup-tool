@@ -7,7 +7,10 @@ import {
   runMailerCostEngine,
   calcMailerTotalSheets,
 } from "../src/lib/cost/mailerCostEngine";
-import { calcMailerStockCost } from "../src/lib/cost/items/mailerStockCost";
+import {
+  calcMailerStockCost,
+  roundPaddedInches,
+} from "../src/lib/cost/items/mailerStockCost";
 import { calcMailerLaminationCost } from "../src/lib/cost/items/mailerLaminationCost";
 import { calcMailerCorrugationCost } from "../src/lib/cost/items/mailerCorrugationCost";
 import { calcMailerShippingCost } from "../src/lib/cost/items/mailerShippingCost";
@@ -36,6 +39,14 @@ function assertClose(
 
 console.log("🧪 Mailer Box Cost Calculation Tests\n");
 
+// Test 0: Padded inches rounding (.5 up)
+console.log("Test 0: Padded inches rounding");
+assert(roundPaddedInches(22.4) === 22, "22.4 → 22");
+assert(roundPaddedInches(22.49) === 22, "22.49 → 22");
+assert(roundPaddedInches(22.5) === 23, "22.5 → 23");
+assert(roundPaddedInches(22.51) === 23, "22.51 → 23");
+assert(roundPaddedInches(26.5118) === 27, "26.5118 → 27");
+
 // Test 1: Total sheets calculation (outside + inside + 200 extra)
 console.log("Test 1: Total sheets calculation");
 const sheets1 = calcMailerTotalSheets(300);
@@ -60,14 +71,11 @@ const stockResult = calcMailerStockCost(
 assert(stockResult !== null, "Stock calculation should succeed");
 assert(stockResult!.materialType === "cardboard", "Default material is cardboard");
 assert(stockResult!.gsm === 350, "Default GSM is 350");
-assert(
-  stockResult!.paddedOpenWidthIn === 26.5118,
-  "Padded width = 24.5118 + 2",
-);
-assert(stockResult!.paddedOpenHeightIn === 29, "Padded height = 27 + 2");
-// Weight unit × cardboard rate 550
-const expectedStockCost =
-  ((26.5118 * 29 * 350 * 100) / 15500 / 100) * 550;
+// 24.5118 + 2 = 26.5118 → rounds to 27; 27 + 2 = 29
+assert(stockResult!.paddedOpenWidthIn === 27, "Padded width rounded 26.5118 → 27");
+assert(stockResult!.paddedOpenHeightIn === 29, "Padded height = 27 + 2 = 29");
+// Weight unit × cardboard rate 550 (using rounded padded size)
+const expectedStockCost = ((27 * 29 * 350 * 100) / 15500 / 100) * 550;
 assertClose(
   stockResult!.total,
   expectedStockCost,
@@ -78,39 +86,18 @@ assertClose(
 // Test 3: Lamination cost
 console.log("\nTest 3: Lamination cost calculation");
 const laminationConfig = { ...DEFAULT_MAILER_COST_CONFIG.lamination };
-const lam1 = calcMailerLaminationCost(
-  26.5118,
-  29,
-  400,
-  100,
-  1,
-  laminationConfig,
-);
+const lam1 = calcMailerLaminationCost(27, 29, 400, 100, 1, laminationConfig);
 assert(lam1 !== null, "Lamination 1 side should succeed");
-// Formula: (26.5118 × 29 / 144) × 4.5 × 100 × 1
-const expectedLam1 = ((26.5118 * 29) / 144) * 4.5 * 100 * 1;
+// Formula: (27 × 29 / 144) × 4.5 × 100 × 1
+const expectedLam1 = ((27 * 29) / 144) * 4.5 * 100 * 1;
 assertClose(lam1!.total, expectedLam1, 0.01, "Lamination 1 side cost");
 
-const lam2 = calcMailerLaminationCost(
-  26.5118,
-  29,
-  400,
-  100,
-  2,
-  laminationConfig,
-);
+const lam2 = calcMailerLaminationCost(27, 29, 400, 100, 2, laminationConfig);
 assert(lam2 !== null, "Lamination 2 sides should succeed");
-const expectedLam2 = ((26.5118 * 29) / 144) * 4.5 * 100 * 2;
+const expectedLam2 = ((27 * 29) / 144) * 4.5 * 100 * 2;
 assertClose(lam2!.total, expectedLam2, 0.01, "Lamination 2 sides cost");
 
-const lam0 = calcMailerLaminationCost(
-  26.5118,
-  29,
-  400,
-  100,
-  0,
-  laminationConfig,
-);
+const lam0 = calcMailerLaminationCost(27, 29, 400, 100, 0, laminationConfig);
 assert(lam0 !== null, "Lamination 0 sides should succeed");
 assert(lam0!.total === 0, "Lamination 0 sides = 0 cost");
 
@@ -118,25 +105,25 @@ assert(lam0!.total === 0, "Lamination 0 sides = 0 cost");
 console.log("\nTest 4: Corrugation cost calculation");
 const corrugationConfig = { ...DEFAULT_MAILER_COST_CONFIG.corrugation };
 const corrResult = calcMailerCorrugationCost(
-  26.5118,
+  27,
   29,
   400,
   100,
   corrugationConfig,
 );
 assert(corrResult !== null, "Corrugation calculation should succeed");
-// 1. Total Pcs / Roll = 2400 / 26.5118 ≈ 90.52
-const expectedPcsPerRoll = 2400 / 26.5118;
+// 1. Total Pcs / Roll = 2400 / 27
+const expectedPcsPerRoll = 2400 / 27;
 assertClose(
   corrResult!.totalPcsPerRoll,
   expectedPcsPerRoll,
   0.01,
   "Total Pcs per Roll",
 );
-// 2. Total Rolls = 400 / 90.52 ≈ 4.42
+// 2. Total Rolls = 400 / pcsPerRoll
 const expectedTotalRolls = 400 / expectedPcsPerRoll;
 assertClose(corrResult!.totalRolls, expectedTotalRolls, 0.01, "Total Rolls");
-// 3. Corrugation Cost = 4.42 × 150 × 29
+// 3. Corrugation Cost = rolls × 150 × 29
 const expectedCorrCost = expectedTotalRolls * 150 * 29;
 assertClose(
   corrResult!.corrugationCost,
@@ -154,17 +141,27 @@ assertClose(
   "Total corrugation + pasting",
 );
 
-// Test 5: Shipping cost
+// Test 5: Shipping cost (uses padded rounded size + GSM 550)
 console.log("\nTest 5: Shipping cost calculation");
 const shippingConfig = { ...DEFAULT_MAILER_COST_CONFIG.shipping };
-const shipResult = calcMailerShippingCost(24.5118, 27, 400, shippingConfig);
+assert(shippingConfig.gsm === 550, "Default shipping GSM is 550");
+const shipResult = calcMailerShippingCost(27, 29, 400, shippingConfig);
 assert(shipResult !== null, "Shipping calculation should succeed");
-// Weight = (24.5118 × 27 × 450 × 400 / 15500) / 100
-const expectedWeight = ((24.5118 * 27 * 450 * 400) / 15500) / 100;
+// Weight = (27 × 29 × 550 × 400 / 15500) / 100
+const expectedWeight = ((27 * 29 * 550 * 400) / 15500) / 100;
 assertClose(shipResult!.totalWeightKg, expectedWeight, 0.01, "Shipping weight");
 // Cost = weight × 3000
 const expectedShipCost = expectedWeight * 3000;
 assertClose(shipResult!.total, expectedShipCost, 0.5, "Shipping cost");
+
+assert(
+  DEFAULT_MAILER_COST_CONFIG.printing.costPerColor === 4000,
+  "Default printing per color 4000 → CMYK 16000",
+);
+assert(
+  DEFAULT_MAILER_COST_CONFIG.plates.costPerPlate === 4000,
+  "Default plates per plate 4000 → CMYK 16000",
+);
 
 // Test 6: Full cost engine integration
 console.log("\nTest 6: Full cost engine integration");

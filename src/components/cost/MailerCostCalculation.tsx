@@ -823,7 +823,7 @@ export function MailerCostCalculation({
               label="Shipping GSM"
               value={config.shipping.gsm}
               step="1"
-              hint="Default 450"
+              hint="Default 550"
               requirePositive
               onChange={(n) =>
                 onConfigChange({
