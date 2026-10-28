@@ -464,6 +464,426 @@ export async function downloadRigidCostImage(
   URL.revokeObjectURL(url);
 }
 
+export interface MailerCostImageInput {
+  clientName: string;
+  length: number;
+  width: number;
+  height: number;
+  unit: string;
+  openWidthIn: number;
+  openHeightIn: number;
+  quantity: number;
+  materialType: string;
+  laminationSides: number;
+  stockGsm: number;
+  shippingGsm: number;
+  shippingRatePerKg: number;
+  profitRatio: number;
+  usdRate: number;
+  costResult: CostEngineResult;
+}
+
+/**
+ * Build a mailer box cost quote image and download as PNG (or JPEG).
+ */
+export async function downloadMailerCostImage(
+  input: MailerCostImageInput,
+  format: "png" | "jpeg" = "png",
+): Promise<void> {
+  const {
+    clientName,
+    length,
+    width,
+    height,
+    unit,
+    openWidthIn,
+    openHeightIn,
+    quantity,
+    materialType,
+    laminationSides,
+    stockGsm,
+    shippingGsm,
+    shippingRatePerKg,
+    profitRatio,
+    usdRate,
+    costResult,
+  } = input;
+
+  const ratio =
+    Number.isFinite(profitRatio) && profitRatio > 0 ? profitRatio : 1;
+  const basePkr = costResult.grandTotal;
+  const sellPkr = roundMoney(basePkr * ratio);
+  const baseUsd = pkrToUsd(basePkr, usdRate);
+  const sellUsd = pkrToUsd(sellPkr, usdRate);
+  const basePerUnitPkr = costResult.costPerUnit;
+  const sellPerUnitPkr = roundMoney(sellPkr / quantity);
+  const basePerUnitUsd =
+    baseUsd != null ? roundMoney(baseUsd / quantity) : null;
+  const sellPerUnitUsd =
+    sellUsd != null ? roundMoney(sellUsd / quantity) : null;
+
+  const displayClient = clientName.trim() || "Valued Client";
+  const dateStr = new Date().toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  const quoteId = `MBQ-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`;
+
+  const stockItem = costResult.items.find((i) => i.id === "stock");
+  const corrItem = costResult.items.find((i) => i.id === "corrugation");
+  const shipItem = costResult.items.find((i) => i.id === "shipping");
+  const extraItem = costResult.items.find((i) => i.id === "extra");
+
+  const specs: [string, string][] = [
+    ["Closed size", `${length} × ${width} × ${height} ${unit}`],
+    ["Open size", `${openWidthIn.toFixed(2)} × ${openHeightIn.toFixed(2)} in`],
+    ["Quantity", `${quantity.toLocaleString("en-US")} units`],
+    [
+      "Material",
+      materialType === "kraft"
+        ? `Kraft (${stockItem?.meta?.materialRate ?? 450} PKR)`
+        : `Cardboard (${stockItem?.meta?.materialRate ?? 550} PKR)`,
+    ],
+    ["Stock GSM", String(stockGsm)],
+    [
+      "Lamination",
+      laminationSides === 0
+        ? "None"
+        : `${laminationSides} side${laminationSides > 1 ? "s" : ""}`,
+    ],
+    ["Shipping GSM", String(shippingGsm)],
+    ["Shipping rate", `${shippingRatePerKg} PKR/kg`],
+    ["Profit ratio", `× ${ratio}`],
+    ["USD rate", `${usdRate} PKR`],
+  ];
+
+  if (stockItem?.meta?.totalSheets != null) {
+    specs.push([
+      "Total sheets",
+      `${Number(stockItem.meta.totalSheets).toLocaleString("en-US")} (out+in+200)`,
+    ]);
+  }
+  if (extraItem) {
+    specs.push(["Extra", formatPkrTotal(extraItem.total)]);
+  }
+
+  const items = costResult.items.filter((i) => !i.excluded);
+
+  const W = 1000;
+  const pad = 36;
+  const contentW = W - pad * 2;
+  const scale = 2;
+
+  const specRows = Math.ceil(specs.length / 2);
+  const itemsWithNotes = items.filter((item) =>
+    ["shipping", "stock", "corrugation", "lamination"].includes(item.id),
+  ).length;
+  const plainItems = items.length - itemsWithNotes;
+  const estH =
+    100 +
+    60 +
+    24 +
+    specRows * 50 +
+    24 +
+    32 +
+    plainItems * 30 +
+    itemsWithNotes * 40 +
+    28 +
+    130 +
+    60 +
+    48;
+
+  const H = Math.max(estH + 40, 920);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W * scale;
+  canvas.height = H * scale;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas not available");
+  ctx.scale(scale, scale);
+  ctx.textBaseline = "alphabetic";
+
+  ctx.fillStyle = C.white;
+  ctx.fillRect(0, 0, W, H);
+
+  let y = 0;
+
+  ctx.fillStyle = C.brandDark;
+  ctx.fillRect(0, 0, W, 78);
+  ctx.fillStyle = C.brand;
+  ctx.fillRect(0, 78, W, 4);
+
+  ctx.fillStyle = C.white;
+  ctx.font = "bold 28px Helvetica, Arial, sans-serif";
+  ctx.fillText("COST QUOTE", pad, 34);
+
+  ctx.fillStyle = C.teal;
+  ctx.font = "14px Helvetica, Arial, sans-serif";
+  ctx.fillText("Mailer Box Packaging", pad, 56);
+
+  ctx.fillStyle = C.white;
+  ctx.font = "bold 13px Helvetica, Arial, sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(quoteId, W - pad, 30);
+  ctx.fillStyle = C.teal;
+  ctx.font = "12px Helvetica, Arial, sans-serif";
+  ctx.fillText(dateStr, W - pad, 48);
+  ctx.fillText(`FX ${usdRate} PKR / USD`, W - pad, 64);
+  ctx.textAlign = "left";
+
+  y = 98;
+
+  roundRect(ctx, pad, y, contentW, 44, 8);
+  ctx.fillStyle = C.brandSoft;
+  ctx.fill();
+  ctx.strokeStyle = C.brand;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = C.brand;
+  ctx.font = "11px Helvetica, Arial, sans-serif";
+  ctx.fillText("PREPARED FOR", pad + 14, y + 16);
+  ctx.fillStyle = C.ink;
+  ctx.font = "bold 18px Helvetica, Arial, sans-serif";
+  ctx.fillText(displayClient, pad + 14, y + 34);
+  y += 58;
+
+  drawSectionLabel(ctx, "Job specifications", pad, y);
+  y += 18;
+
+  const gap = 10;
+  const cardW = (contentW - gap) / 2;
+  const cardH = 40;
+  specs.forEach(([label, value], i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const x = pad + col * (cardW + gap);
+    const cy = y + row * (cardH + gap);
+
+    roundRect(ctx, x, cy, cardW, cardH, 6);
+    ctx.fillStyle = C.surface;
+    ctx.fill();
+    ctx.strokeStyle = C.line;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = C.muted;
+    ctx.font = "10px Helvetica, Arial, sans-serif";
+    ctx.fillText(label.toUpperCase(), x + 10, cy + 14);
+    ctx.fillStyle = C.ink;
+    ctx.font = "bold 13px Helvetica, Arial, sans-serif";
+    const clipped = value.length > 42 ? `${value.slice(0, 40)}…` : value;
+    ctx.fillText(clipped, x + 10, cy + 30);
+  });
+  y += specRows * (cardH + gap) + 8;
+
+  drawSectionLabel(ctx, "Cost breakdown", pad, y);
+  y += 16;
+
+  const colUnit = pad + contentW * 0.55;
+  const colTotal = pad + contentW - 8;
+  const rowH = 30;
+
+  roundRect(ctx, pad, y, contentW, rowH, 6);
+  ctx.fillStyle = C.ink;
+  ctx.fill();
+  ctx.fillRect(pad, y + rowH - 6, contentW, 6);
+
+  ctx.fillStyle = C.white;
+  ctx.font = "bold 11px Helvetica, Arial, sans-serif";
+  ctx.fillText("ITEM", pad + 10, y + 19);
+  ctx.textAlign = "right";
+  ctx.fillText("PER UNIT", colUnit, y + 19);
+  ctx.fillText("TOTAL", colTotal, y + 19);
+  ctx.textAlign = "left";
+  y += rowH;
+
+  items.forEach((item, idx) => {
+    let note = "";
+    if (item.id === "shipping" && item.meta) {
+      note = `${Number(item.meta.totalWeightKg ?? 0).toLocaleString("en-US", {
+        maximumFractionDigits: 3,
+      })} kg @ ${formatPkrTotal(Number(item.meta.ratePerKg ?? shippingRatePerKg))}/kg · GSM ${item.meta.gsm ?? shippingGsm}`;
+    } else if (item.id === "stock" && item.meta) {
+      note = `${String(item.meta.materialType)} · GSM ${item.meta.gsm} · ${Number(item.meta.totalSheets ?? 0).toLocaleString("en-US")} sheets · padded ${Number(item.meta.paddedOpenWidthIn ?? 0).toFixed(2)}×${Number(item.meta.paddedOpenHeightIn ?? 0).toFixed(2)} in`;
+    } else if (item.id === "corrugation" && item.meta) {
+      note = `${item.meta.totalRolls} rolls · ${item.meta.totalPcsPerRoll} pcs/roll · paste ${formatPkrTotal(Number(item.meta.pastingCost ?? 0))}`;
+    } else if (item.id === "lamination" && item.meta) {
+      note = `${item.meta.sides} side(s) · rate ${item.meta.rate}`;
+    } else if (
+      (item.id === "plates" || item.id === "printing") &&
+      item.meta
+    ) {
+      note = `${item.meta.colorMode === "cmyk" ? "CMYK" : "1 color"} · ${item.meta.colors} color(s)`;
+    }
+
+    const h = note ? 40 : rowH;
+    if (idx % 2 === 1) {
+      ctx.fillStyle = C.rowAlt;
+      ctx.fillRect(pad, y, contentW, h);
+    }
+
+    ctx.fillStyle = C.ink;
+    ctx.font = "bold 12px Helvetica, Arial, sans-serif";
+    ctx.fillText(item.label, pad + 10, note ? y + 15 : y + 19);
+
+    if (note) {
+      ctx.fillStyle = C.muted;
+      ctx.font = "10px Helvetica, Arial, sans-serif";
+      const noteClip = note.length > 88 ? `${note.slice(0, 86)}…` : note;
+      ctx.fillText(noteClip, pad + 10, y + 30);
+    }
+
+    const midY = note ? y + 22 : y + 19;
+    ctx.fillStyle = C.muted;
+    ctx.font = "12px Helvetica, Arial, sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(formatPkr(item.perUnit), colUnit, midY);
+    ctx.fillStyle = C.ink;
+    ctx.font = "bold 12px Helvetica, Arial, sans-serif";
+    ctx.fillText(formatPkrTotal(item.total), colTotal, midY);
+    ctx.textAlign = "left";
+
+    y += h;
+  });
+
+  // silence unused if corrItem not used elsewhere
+  void corrItem;
+  void shipItem;
+
+  ctx.strokeStyle = C.line;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad, y);
+  ctx.lineTo(W - pad, y);
+  ctx.stroke();
+  y += 18;
+
+  drawSectionLabel(ctx, "Pricing summary", pad, y);
+  y += 16;
+
+  const half = (contentW - gap) / 2;
+  const sumH = 108;
+
+  roundRect(ctx, pad, y, half, sumH, 8);
+  ctx.fillStyle = C.white;
+  ctx.fill();
+  ctx.strokeStyle = C.line;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = C.surface;
+  ctx.fillRect(pad, y, half, 4);
+
+  ctx.fillStyle = C.muted;
+  ctx.font = "bold 11px Helvetica, Arial, sans-serif";
+  ctx.fillText("BASE COST", pad + 14, y + 22);
+  ctx.font = "10px Helvetica, Arial, sans-serif";
+  ctx.fillText("Production cost (no markup)", pad + 14, y + 36);
+  ctx.fillStyle = C.ink;
+  ctx.font = "bold 18px Helvetica, Arial, sans-serif";
+  ctx.fillText(formatPkrTotal(basePkr), pad + 14, y + 58);
+  ctx.fillStyle = C.accent;
+  ctx.font = "bold 16px Helvetica, Arial, sans-serif";
+  ctx.fillText(baseUsd != null ? formatUsd(baseUsd) : "—", pad + 14, y + 78);
+  ctx.fillStyle = C.muted;
+  ctx.font = "11px Helvetica, Arial, sans-serif";
+  ctx.fillText(
+    `Per unit  ${formatPkr(basePerUnitPkr)}  ·  ${basePerUnitUsd != null ? formatUsd(basePerUnitUsd) : "—"}`,
+    pad + 14,
+    y + 96,
+  );
+
+  const sx = pad + half + gap;
+  roundRect(ctx, sx, y, half, sumH, 8);
+  ctx.fillStyle = C.brandDark;
+  ctx.fill();
+  ctx.fillStyle = C.brand;
+  ctx.fillRect(sx, y, half, 4);
+
+  ctx.fillStyle = C.teal;
+  ctx.font = "bold 11px Helvetica, Arial, sans-serif";
+  ctx.fillText("SELLING PRICE", sx + 14, y + 22);
+  ctx.font = "10px Helvetica, Arial, sans-serif";
+  ctx.fillText(`Quoted price (×${ratio})`, sx + 14, y + 36);
+  ctx.fillStyle = C.white;
+  ctx.font = "bold 18px Helvetica, Arial, sans-serif";
+  ctx.fillText(formatPkrTotal(sellPkr), sx + 14, y + 58);
+  ctx.font = "bold 16px Helvetica, Arial, sans-serif";
+  ctx.fillText(sellUsd != null ? formatUsd(sellUsd) : "—", sx + 14, y + 78);
+  ctx.fillStyle = C.teal;
+  ctx.font = "11px Helvetica, Arial, sans-serif";
+  ctx.fillText(
+    `Per unit  ${formatPkr(sellPerUnitPkr)}  ·  ${sellPerUnitUsd != null ? formatUsd(sellPerUnitUsd) : "—"}`,
+    sx + 14,
+    y + 96,
+  );
+
+  y += sumH + 16;
+
+  roundRect(ctx, pad, y, contentW, 40, 6);
+  ctx.fillStyle = C.surface;
+  ctx.fill();
+  ctx.strokeStyle = C.line;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = C.muted;
+  ctx.font = "11px Helvetica, Arial, sans-serif";
+  wrapText(
+    ctx,
+    "This quote is generated from the Mailer Box Calculator. Final commercial terms may vary with material availability, finishing approvals, and shipping conditions.",
+    pad + 12,
+    y + 16,
+    contentW - 24,
+    14,
+  );
+  y += 52;
+
+  ctx.strokeStyle = C.line;
+  ctx.beginPath();
+  ctx.moveTo(pad, y);
+  ctx.lineTo(W - pad, y);
+  ctx.stroke();
+  ctx.fillStyle = C.soft;
+  ctx.font = "10px Helvetica, Arial, sans-serif";
+  ctx.fillText(
+    "Confidential quote · Estimates based on entered specifications",
+    pad,
+    y + 16,
+  );
+  ctx.textAlign = "right";
+  ctx.fillText("Pacify Packaging", W - pad, y + 16);
+  ctx.textAlign = "left";
+
+  const usedH = Math.min(H, y + 28);
+  const out = document.createElement("canvas");
+  out.width = W * scale;
+  out.height = usedH * scale;
+  const octx = out.getContext("2d");
+  if (!octx) throw new Error("Canvas not available");
+  octx.drawImage(canvas, 0, 0, out.width, usedH * scale, 0, 0, out.width, out.height);
+
+  const mime = format === "jpeg" ? "image/jpeg" : "image/png";
+  const quality = format === "jpeg" ? 0.92 : undefined;
+  const blob = await new Promise<Blob | null>((resolve) =>
+    out.toBlob(resolve, mime, quality),
+  );
+  if (!blob) throw new Error("Failed to create image");
+
+  const stamp = new Date().toISOString().slice(0, 10);
+  const ext = format === "jpeg" ? "jpg" : "png";
+  const filename = `mailer-box-quote-${safeFilenamePart(displayClient)}-${stamp}.${ext}`;
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function drawSectionLabel(
   ctx: CanvasRenderingContext2D,
   title: string,
