@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 import { Card } from "@/components/ui/Card";
 import {
@@ -127,13 +128,23 @@ function ConfigNumber({
   step,
   onChange,
   hint,
+  /** When true, empty/0 while typing does not wipe the stored config (keeps last valid). */
+  requirePositive = false,
 }: {
   label: string;
   value: number;
   step: string;
   onChange: (n: number) => void;
   hint?: string;
+  requirePositive?: boolean;
 }) {
+  const [draft, setDraft] = useState(String(value));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setDraft(String(value));
+  }, [value, focused]);
+
   return (
     <div>
       <label className="block text-xs font-medium text-gray-400 mb-1.5">
@@ -144,10 +155,28 @@ function ConfigNumber({
         inputMode="decimal"
         step={step}
         min="0"
-        value={value}
+        value={focused ? draft : String(value)}
+        onFocus={() => {
+          setFocused(true);
+          setDraft(String(value));
+        }}
+        onBlur={() => {
+          setFocused(false);
+          const n = Number(draft);
+          if (!Number.isFinite(n) || n < 0 || (requirePositive && n <= 0)) {
+            setDraft(String(value));
+            return;
+          }
+          onChange(n);
+          setDraft(String(n));
+        }}
         onChange={(e) => {
-          const n = Number(e.target.value);
+          const raw = e.target.value;
+          setDraft(raw);
+          if (raw.trim() === "") return;
+          const n = Number(raw);
           if (!Number.isFinite(n) || n < 0) return;
+          if (requirePositive && n <= 0) return;
           onChange(n);
         }}
         className={inputCls}
@@ -795,6 +824,7 @@ export function MailerCostCalculation({
               value={config.shipping.gsm}
               step="1"
               hint="Default 450"
+              requirePositive
               onChange={(n) =>
                 onConfigChange({
                   ...config,
@@ -807,6 +837,7 @@ export function MailerCostCalculation({
               value={config.shipping.ratePerKg}
               step="100"
               hint="Default 3000"
+              requirePositive
               onChange={(n) =>
                 onConfigChange({
                   ...config,

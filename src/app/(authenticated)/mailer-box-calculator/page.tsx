@@ -108,7 +108,7 @@ export default function MailerBoxCalculatorPage() {
   // Cost calculation state
   const [quantityRaw, setQuantityRaw] = useState("");
   const [quantityTouched, setQuantityTouched] = useState(false);
-  const [profitRatioRaw, setProfitRatioRaw] = useState("");
+  const [profitRatioRaw, setProfitRatioRaw] = useState("1.5");
   const [extraRaw, setExtraRaw] = useState("");
   const [clientName, setClientName] = useState("");
   const [mailerCostConfig, setMailerCostConfig] = useState<MailerCostConfig>(() => ({
@@ -116,6 +116,7 @@ export default function MailerBoxCalculatorPage() {
   }));
   const [materialType, setMaterialType] = useState<MailerMaterialType>("cardboard");
   const [laminationSides, setLaminationSides] = useState(1);
+  const [corrugationEnabled, setCorrugationEnabled] = useState(true);
   const [printColorMode, setPrintColorMode] = useState<"one" | "cmyk">("cmyk");
   const [totalSheetsOverride, setTotalSheetsOverride] = useState(false);
   const [totalSheetsManualRaw, setTotalSheetsManualRaw] = useState("");
@@ -320,6 +321,7 @@ export default function MailerBoxCalculatorPage() {
           shippingManualRaw,
         ),
         extraTotal: parseExtraTotal(extraRaw),
+        corrugationEnabled,
         printColorMode,
       },
     );
@@ -330,6 +332,7 @@ export default function MailerBoxCalculatorPage() {
     mailerCostConfig,
     materialType,
     laminationSides,
+    corrugationEnabled,
     printColorMode,
     totalSheetsOverride,
     totalSheetsManualRaw,
@@ -380,12 +383,13 @@ export default function MailerBoxCalculatorPage() {
     setOpenHeightRaw("");
     setQuantityRaw("");
     setQuantityTouched(false);
-    setProfitRatioRaw("");
+    setProfitRatioRaw("1.5");
     setExtraRaw("");
     setClientName("");
     setMailerCostConfig({ ...DEFAULT_MAILER_COST_CONFIG });
     setMaterialType("cardboard");
     setLaminationSides(1);
+    setCorrugationEnabled(true);
     setPrintColorMode("cmyk");
     setTotalSheetsOverride(false);
     setTotalSheetsManualRaw("");
@@ -573,7 +577,7 @@ export default function MailerBoxCalculatorPage() {
                 }}
                 className={inputCls(false)}
               />
-              <p className="mt-1 text-[11px] text-gray-600">Default: 275</p>
+              <p className="mt-1 text-[11px] text-gray-600">Default: 255</p>
             </div>
           </div>
 
@@ -722,6 +726,21 @@ export default function MailerBoxCalculatorPage() {
                 Optional lump sum added into production cost
               </p>
             </div>
+          </div>
+
+          <div className="mt-4">
+            <label className="inline-flex items-center gap-2 text-sm text-gray-300 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={corrugationEnabled}
+                onChange={(e) => setCorrugationEnabled(e.target.checked)}
+                className="rounded border-gray-600 bg-gray-800 text-pacify-gold focus:ring-pacify-gold/40"
+              />
+              Include corrugation
+            </label>
+            <p className="mt-1 text-[11px] text-gray-600">
+              Default on. Uncheck to exclude corrugation from production cost.
+            </p>
           </div>
 
           <div className="mt-4 flex gap-2">

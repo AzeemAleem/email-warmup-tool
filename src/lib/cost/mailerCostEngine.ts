@@ -24,6 +24,8 @@ export interface MailerCostExtras {
   shippingManualTotal: number | null;
   /** Optional lump-sum Extra (PKR) added to production cost */
   extraTotal: number | null;
+  /** When false, skip corrugation entirely from the grand total */
+  corrugationEnabled: boolean;
   printColorMode: "one" | "cmyk";
 }
 
@@ -238,48 +240,50 @@ export function runMailerCostEngine(
     },
   });
 
-  // 8. Corrugation
-  const corrugationCalc = calcMailerCorrugationCost(
-    paddedOpenWidthIn,
-    paddedOpenHeightIn,
-    quantity,
-    totalSheets,
-    config.corrugation,
-  );
-  if (corrugationCalc || extras.corrugationManualTotal != null) {
-    const usedAutomatic = extras.corrugationManualTotal == null;
-    const autoTotal = corrugationCalc?.total ?? 0;
-    const total = extras.corrugationManualTotal ?? autoTotal;
-    items.push({
-      id: "corrugation",
-      label: "Corrugation",
-      perUnit: roundMoney(total / quantity),
-      total,
-      meta: {
-        totalPcsPerRoll: corrugationCalc?.totalPcsPerRoll ?? 0,
-        totalRolls: corrugationCalc?.totalRolls ?? 0,
-        corrugationCost: corrugationCalc?.corrugationCost ?? 0,
-        pastingCost: corrugationCalc?.pastingCost ?? 0,
-        ratePerRoll: config.corrugation.ratePerRoll,
-        pastingPerSheet: config.corrugation.pastingPerSheet,
-        rollCapacity: config.corrugation.rollCapacity,
-        paddedOpenWidthIn,
-        paddedOpenHeightIn,
-        totalSheets,
-        autoTotal,
-        usedAutomatic,
-      },
-    });
+  // 8. Corrugation (optional)
+  if (extras.corrugationEnabled) {
+    const corrugationCalc = calcMailerCorrugationCost(
+      paddedOpenWidthIn,
+      paddedOpenHeightIn,
+      quantity,
+      totalSheets,
+      config.corrugation,
+    );
+    if (corrugationCalc || extras.corrugationManualTotal != null) {
+      const usedAutomatic = extras.corrugationManualTotal == null;
+      const autoTotal = corrugationCalc?.total ?? 0;
+      const total = extras.corrugationManualTotal ?? autoTotal;
+      items.push({
+        id: "corrugation",
+        label: "Corrugation",
+        perUnit: roundMoney(total / quantity),
+        total,
+        meta: {
+          totalPcsPerRoll: corrugationCalc?.totalPcsPerRoll ?? 0,
+          totalRolls: corrugationCalc?.totalRolls ?? 0,
+          corrugationCost: corrugationCalc?.corrugationCost ?? 0,
+          pastingCost: corrugationCalc?.pastingCost ?? 0,
+          ratePerRoll: config.corrugation.ratePerRoll,
+          pastingPerSheet: config.corrugation.pastingPerSheet,
+          rollCapacity: config.corrugation.rollCapacity,
+          paddedOpenWidthIn,
+          paddedOpenHeightIn,
+          totalSheets,
+          autoTotal,
+          usedAutomatic,
+        },
+      });
+    }
   }
 
-  // 9. Shipping
-  const shippingCalc = calcMailerShippingCost(
-    openWidthIn,
-    openHeightIn,
-    quantity,
-    config.shipping,
-  );
-  if (shippingCalc || extras.shippingManualTotal != null) {
+  // 9. Shipping — always include so the section stays visible while editing rates
+  {
+    const shippingCalc = calcMailerShippingCost(
+      openWidthIn,
+      openHeightIn,
+      quantity,
+      config.shipping,
+    );
     const usedAutomatic = extras.shippingManualTotal == null;
     const autoTotal = shippingCalc?.total ?? 0;
     const total = extras.shippingManualTotal ?? autoTotal;

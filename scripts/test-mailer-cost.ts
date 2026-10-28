@@ -187,6 +187,7 @@ const engineResult = runMailerCostEngine(
     corrugationManualTotal: null,
     shippingManualTotal: null,
     extraTotal: null,
+    corrugationEnabled: true,
     printColorMode: "cmyk",
   },
 );
@@ -238,6 +239,7 @@ const kraftResult = runMailerCostEngine(24.5118, 27, 500, 4, kraftConfig, {
   corrugationManualTotal: null,
   shippingManualTotal: null,
   extraTotal: null,
+  corrugationEnabled: true,
   printColorMode: "cmyk",
 });
 assert(kraftResult !== null, "Kraft material calculation should succeed");
@@ -259,9 +261,33 @@ const noLamResult = runMailerCostEngine(24.5118, 27, 500, 4, DEFAULT_MAILER_COST
   corrugationManualTotal: null,
   shippingManualTotal: null,
   extraTotal: null,
+  corrugationEnabled: true,
   printColorMode: "cmyk",
 });
 const noLamItem = noLamResult?.items.find((i) => i.id === "lamination");
 assert(noLamItem === undefined, "No lamination item when sides = 0");
+
+// Test 9: Corrugation can be disabled
+console.log("\nTest 9: Corrugation disabled");
+const noCorrResult = runMailerCostEngine(24.5118, 27, 500, 4, DEFAULT_MAILER_COST_CONFIG, {
+  totalSheetsOverride: null,
+  laminationSides: 1,
+  stockManualTotal: null,
+  laminationManualTotal: null,
+  platesManualTotal: null,
+  printingManualTotal: null,
+  dieManualTotal: null,
+  cuttingManualTotal: null,
+  pastingManualTotal: null,
+  corrugationManualTotal: null,
+  shippingManualTotal: null,
+  extraTotal: null,
+  corrugationEnabled: false,
+  printColorMode: "cmyk",
+});
+assert(
+  noCorrResult?.items.find((i) => i.id === "corrugation") === undefined,
+  "No corrugation item when disabled",
+);
 
 console.log("\n✅ All mailer cost calculation tests passed!");

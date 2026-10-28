@@ -100,6 +100,6 @@ export const DEFAULT_MAILER_COST_CONFIG: Readonly<MailerCostConfig> = {
     ratePerKg: 3000,
   },
   fx: {
-    usdRate: 275,
+    usdRate: 255,
   },
 };
