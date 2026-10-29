@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
+import {
+  EyeIcon,
+  PencilSquareIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
 import { clsx } from "clsx";
 
 export interface InvoiceRow {
@@ -96,7 +100,12 @@ export function InvoicesTable({ invoices: initial }: { invoices: InvoiceRow[] })
                 )}
               >
                 <td className="px-4 py-3">
-                  <span className="font-mono font-bold text-pacify-gold">{inv.quoteNo}</span>
+                  <Link
+                    href={`/invoices/${inv.id}`}
+                    className="font-mono font-bold text-pacify-gold hover:underline"
+                  >
+                    {inv.quoteNo}
+                  </Link>
                   {inv.quantity != null && (
                     <p className="text-[10px] text-gray-500 mt-0.5">
                       {inv.quantity.toLocaleString("en-US")} units
@@ -126,6 +135,13 @@ export function InvoicesTable({ invoices: initial }: { invoices: InvoiceRow[] })
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-2">
+                    <Link
+                      href={`/invoices/${inv.id}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+                    >
+                      <EyeIcon className="h-3.5 w-3.5" />
+                      View
+                    </Link>
                     <Link
                       href={`/invoice-generator?id=${inv.id}`}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-pacify-gold text-pacify-black hover:bg-pacify-gold/90 transition-colors"

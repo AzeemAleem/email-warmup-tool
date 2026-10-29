@@ -6,6 +6,7 @@ import {
   ArrowPathIcon,
   ChevronDownIcon,
   CheckIcon,
+  BookmarkIcon,
 } from "@heroicons/react/24/outline";
 import { clsx } from "clsx";
 import { Card } from "@/components/ui/Card";
@@ -37,6 +38,8 @@ import {
 } from "@/lib/cost/mailerCostEngine";
 import { parseExtraTotal } from "@/lib/cost/items/extraCost";
 import { downloadMailerCostImage } from "@/lib/cost/exportCostImage";
+import { SaveToProjectModal } from "@/components/project/SaveToProjectModal";
+import { buildCalculationCore } from "@/lib/cost/calculationSnapshot";
 import { parseQuantity, quantityError } from "@/lib/cost/costEngine";
 import { recommendSheet } from "@/lib/sheetNesting";
 import { ALL_SHEETS, sheetKey } from "@/lib/sheetSizes";
@@ -139,6 +142,7 @@ export default function MailerBoxCalculatorPage() {
   const [shippingOverride, setShippingOverride] = useState(false);
   const [shippingManualRaw, setShippingManualRaw] = useState("");
   const [artSheetKeyOverride, setArtSheetKeyOverride] = useState<string | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
 
   function switchUnit(next: LengthUnit) {
     if (next === unit) return;
@@ -1171,6 +1175,14 @@ export default function MailerBoxCalculatorPage() {
                 usdRate={mailerCostConfig.fx.usdRate}
                 compact
               />
+              <button
+                type="button"
+                onClick={() => setShowSaveModal(true)}
+                className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold border border-pacify-gold/40 text-pacify-gold hover:bg-pacify-gold/10 transition-colors"
+              >
+                <BookmarkIcon className="h-4 w-4" />
+                Save to Project
+              </button>
             </div>
           </aside>
           <CostTotalsStickyBar
@@ -1180,6 +1192,36 @@ export default function MailerBoxCalculatorPage() {
             usdRate={mailerCostConfig.fx.usdRate}
           />
         </>
+      )}
+
+      {/* Save to project modal */}
+      {showSaveModal && costResult && result && (
+        <SaveToProjectModal
+          type="MAILER_BOX"
+          snapshot={{
+            ...buildCalculationCore(costResult, {
+              quantity: quantity!,
+              profitRatio,
+              usdRate: mailerCostConfig.fx.usdRate,
+            }),
+            calculator: "MAILER_BOX",
+            unit,
+            length: L,
+            width: W,
+            height: H,
+            openWidthIn: result.in.openWidth,
+            openHeightIn: result.in.openHeight,
+            material: materialType,
+            laminationSides,
+            corrugationEnabled,
+            printColorMode,
+            stockGsm: mailerCostConfig.stock.gsm,
+            shippingGsm: mailerCostConfig.shipping.gsm,
+            shippingRatePerKg: mailerCostConfig.shipping.ratePerKg,
+            clientName: clientName || null,
+          }}
+          onClose={() => setShowSaveModal(false)}
+        />
       )}
     </div>
   );

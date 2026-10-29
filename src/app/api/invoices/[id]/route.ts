@@ -41,6 +41,7 @@ const DraftSchema = z.object({
 
 const UpdateSchema = z.object({
   payload: DraftSchema,
+  projectId: z.string().optional().or(z.literal("")),
 });
 
 function summaryFromPayload(payload: InvoiceDraftPayload) {
@@ -100,11 +101,13 @@ export async function PATCH(
 
     const payload = parsed.data.payload as InvoiceDraftPayload;
     const summary = summaryFromPayload(payload);
+    const projectId = parsed.data.projectId?.trim() || null;
 
     const updated = await prisma.invoice.update({
       where: { id: params.id },
       data: {
         ...summary,
+        ...(projectId !== undefined ? { projectId: projectId || null } : {}),
         payload: payload as unknown as Prisma.InputJsonValue,
       },
     });

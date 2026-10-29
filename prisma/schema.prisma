@@ -100,6 +100,111 @@ model ContentTemplate {
   lastUsedAt DateTime?
 }
 
+/// ─── Client Management ───────────────────────────────────────────────────────
+
+model Client {
+  id        String    @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  /// Free-form notes about how this client communicates, preferences, etc.
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  projects  Project[]
+
+  @@index([name])
+  @@index([createdAt])
+}
+
+model Project {
+  id           String        @id @default(cuid())
+  clientId     String
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name         String
+  /// ACTIVE | COMPLETED | ON_HOLD | CANCELLED
+  status       String        @default("ACTIVE")
+  /// QUOTATION = quote only | WON = order confirmed / proceeded
+  dealType     String        @default("QUOTATION")
+  /// Unique tracking reference (e.g. PRJ-001)
+  trackingId   String?
+  /// When work on the project started
+  startDate    DateTime?
+  /// When the project must be delivered
+  deadline     DateTime?
+  /// Ship-to address for this project
+  shippingAddress String?
+  /// Bullet-point requirements stored as a JSON string[]
+  requirements Json          @default("[]")
+  /// Additional notes / context for this project
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  calculations Calculation[]
+  invoices     Invoice[]
+  actualExpense ActualExpense?
+
+  @@index([clientId])
+  @@index([status])
+  @@index([dealType])
+  @@index([createdAt])
+  @@index([trackingId])
+}
+
+/// Real post-order expense vs estimation (calculation / invoice)
+model ActualExpense {
+  id                   String   @id @default(cuid())
+  projectId            String   @unique
+  project              Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  /// Client paid / quoted total in USD
+  totalAmountUsd       Float?
+  /// Deductions in USD (fees, discounts, etc.)
+  deductionUsd         Float?
+  /// Remaining after deduction (USD) — auto-filled, editable override
+  remainingAmountUsd   Float?
+  /// PKR per 1 USD used for conversions
+  usdRate              Float    @default(280)
+  productionCostPkr    Float?
+  shippingCostPkr      Float?
+  totalWeightKg        Float?
+  /// Optional override; otherwise shippingCost / weight
+  shippingPerKgPkr     Float?
+  /// ISO-ish country name
+  shipToCountry        String?
+  /// Auto production+shipping unless overridden
+  totalExpensePkr      Float?
+  /// Auto remainingPkr − totalExpense unless overridden
+  profitPkr            Float?
+  /// PAYPAL | WISE | PAYONEER | BANK | OTHER
+  paymentMethod        String?
+  notes                String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+/// Saved calculator snapshot (Mailer Box or Rigid Box)
+model Calculation {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  /// "MAILER_BOX" | "RIGID_BOX"
+  type      String
+  /// User-provided label, e.g. "Initial estimate Q1"
+  label     String?
+  /// Full input parameters + cost breakdown snapshot (JSON)
+  snapshot  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+/// ─────────────────────────────────────────────────────────────────────────────
+
 /// Saved packaging quotation drafts (Invoice Generator)
 model Invoice {
   id          String   @id @default(cuid())
@@ -111,6 +216,9 @@ model Invoice {
   quantity    Int?
   unitPrice   Float?
   totalAmount Float?
+  /// Optional link to a client project
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   /// Full form draft for reload/edit (JSON)
   payload     Json
   createdAt   DateTime @default(now())
@@ -119,4 +227,5 @@ model Invoice {
   @@index([quoteNo])
   @@index([createdAt])
   @@index([clientName])
+  @@index([projectId])
 }

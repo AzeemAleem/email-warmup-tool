@@ -6,6 +6,7 @@ import {
   ArrowPathIcon,
   ChevronDownIcon,
   CheckIcon,
+  BookmarkIcon,
 } from "@heroicons/react/24/outline";
 import { clsx } from "clsx";
 import { Card } from "@/components/ui/Card";
@@ -26,6 +27,8 @@ import {
   runCostEngine,
 } from "@/lib/cost/costEngine";
 import { downloadRigidCostImage } from "@/lib/cost/exportCostImage";
+import { SaveToProjectModal } from "@/components/project/SaveToProjectModal";
+import { buildCalculationCore } from "@/lib/cost/calculationSnapshot";
 import { parseDebossTotal } from "@/lib/cost/items/debossCost";
 import { parseDieTotal } from "@/lib/cost/items/dieCost";
 import { parseEmbossingTotal } from "@/lib/cost/items/embossingCost";
@@ -178,6 +181,7 @@ export default function RigidBoxCalculatorPage() {
   const [artSheetKeyOverride, setArtSheetKeyOverride] = useState<string | null>(
     null,
   );
+  const [showSaveModal, setShowSaveModal] = useState(false);
   const [paperType, setPaperType] = useState<PaperType>("art");
   const [printSides, setPrintSides] = useState<PrintSides>("double");
   const [printColorMode, setPrintColorMode] =
@@ -1396,17 +1400,27 @@ export default function RigidBoxCalculatorPage() {
       {showStickyTotals && (
         <>
           <aside className="hidden xl:block w-80 shrink-0 self-stretch">
-            <div className="sticky top-6 z-20">
-              <p className="text-xs font-medium text-pacify-gold/70 uppercase tracking-[0.14em] mb-2 px-0.5">
-                Live totals
-              </p>
-              <CostTotalsSummary
-                result={costResult}
-                quantity={quantity}
-                profitRatio={profitRatio}
-                usdRate={costConfig.fx.usdRate}
-                compact
-              />
+            <div className="sticky top-6 z-20 space-y-4">
+              <div>
+                <p className="text-xs font-medium text-pacify-gold/70 uppercase tracking-[0.14em] mb-2 px-0.5">
+                  Live totals
+                </p>
+                <CostTotalsSummary
+                  result={costResult}
+                  quantity={quantity}
+                  profitRatio={profitRatio}
+                  usdRate={costConfig.fx.usdRate}
+                  compact
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSaveModal(true)}
+                className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold border border-pacify-gold/40 text-pacify-gold hover:bg-pacify-gold/10 transition-colors"
+              >
+                <BookmarkIcon className="h-4 w-4" />
+                Save to Project
+              </button>
             </div>
           </aside>
           <CostTotalsStickyBar
@@ -1416,6 +1430,32 @@ export default function RigidBoxCalculatorPage() {
             usdRate={costConfig.fx.usdRate}
           />
         </>
+      )}
+
+      {/* Save to project modal */}
+      {showSaveModal && costResult && result && (
+        <SaveToProjectModal
+          type="RIGID_BOX"
+          snapshot={{
+            ...buildCalculationCore(costResult, {
+              quantity: quantity!,
+              profitRatio,
+              usdRate: costConfig.fx.usdRate,
+            }),
+            calculator: "RIGID_BOX",
+            unit,
+            length: L,
+            width: W,
+            height: H,
+            openWidthIn: result.in.openWidth,
+            openHeightIn: result.in.openHeight,
+            paperType,
+            printSides,
+            printColorMode,
+            clientName: clientName || null,
+          }}
+          onClose={() => setShowSaveModal(false)}
+        />
       )}
     </div>
   );
@@ -1541,3 +1581,4 @@ function RigidLayoutPreview({
     </div>
   );
 }
+

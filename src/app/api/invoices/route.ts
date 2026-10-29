@@ -41,6 +41,7 @@ const DraftSchema = z.object({
 
 const SaveSchema = z.object({
   payload: DraftSchema,
+  projectId: z.string().optional().or(z.literal("")),
 });
 
 function summaryFromPayload(payload: InvoiceDraftPayload) {
@@ -101,10 +102,12 @@ export async function POST(req: NextRequest) {
 
     const payload = parsed.data.payload as InvoiceDraftPayload;
     const summary = summaryFromPayload(payload);
+    const projectId = parsed.data.projectId?.trim() || null;
 
     const created = await prisma.invoice.create({
       data: {
         ...summary,
+        ...(projectId ? { projectId } : {}),
         payload: payload as unknown as Prisma.InputJsonValue,
       },
     });
