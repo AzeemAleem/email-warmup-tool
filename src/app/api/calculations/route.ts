@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/session";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -38,8 +39,7 @@ export async function POST(req: NextRequest) {
         projectId: parsed.data.projectId,
         type: parsed.data.type,
         label: parsed.data.label?.trim() || null,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        snapshot: parsed.data.snapshot as any,
+        snapshot: parsed.data.snapshot as Prisma.InputJsonValue,
       },
     });
 
