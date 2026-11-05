@@ -115,7 +115,7 @@ function RequirementsEditor({
                       if (e.key === "Enter") saveEdit(idx);
                       if (e.key === "Escape") cancelEdit();
                     }}
-                    className="flex-1 rounded-md border border-pacify-gold/40 bg-gray-800 px-2 py-1 text-sm text-white focus:outline-none"
+                    className="flex-1 rounded-md border border-pacify-gold/40 bg-gray-800 px-2 py-1 text-sm text-foreground focus:outline-none"
                   />
                   <button
                     onClick={() => saveEdit(idx)}
@@ -168,7 +168,7 @@ function RequirementsEditor({
             if (e.key === "Enter") { e.preventDefault(); addItem(); }
           }}
           placeholder="Type a requirement and press Enter…"
-          className="flex-1 rounded-md border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:border-pacify-gold/40 focus:outline-none"
+          className="flex-1 rounded-md border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-foreground placeholder-gray-600 focus:border-pacify-gold/40 focus:outline-none"
         />
         <button
           onClick={addItem}
@@ -202,7 +202,7 @@ function EditableText({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={3}
-        className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40 resize-none"
+        className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40 resize-none"
       />
     );
   }
@@ -212,7 +212,7 @@ function EditableText({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
+      className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
     />
   );
 }
@@ -318,13 +318,13 @@ export function ProjectDetailClient({ initial }: { initial: ProjectDetail }) {
     <div className="max-w-3xl space-y-8">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-gray-400">
-        <Link href="/clients" className="hover:text-white transition-colors">
+        <Link href="/clients" className="hover:text-foreground transition-colors">
           Clients
         </Link>
         <span className="text-gray-700">/</span>
         <Link
           href={`/clients/${project.clientId}`}
-          className="hover:text-white transition-colors"
+          className="hover:text-foreground transition-colors"
         >
           {project.clientName}
         </Link>
@@ -349,7 +349,7 @@ export function ProjectDetailClient({ initial }: { initial: ProjectDetail }) {
                   <select
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value)}
-                    className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-pacify-gold/60 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground focus:border-pacify-gold/60 focus:outline-none"
                   >
                     {STATUS_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>{o.label}</option>
@@ -361,7 +361,7 @@ export function ProjectDetailClient({ initial }: { initial: ProjectDetail }) {
                   <select
                     value={editDealType}
                     onChange={(e) => setEditDealType(e.target.value)}
-                    className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-pacify-gold/60 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground focus:border-pacify-gold/60 focus:outline-none"
                   >
                     <option value="QUOTATION">Quotation only</option>
                     <option value="WON">Won / Confirmed order</option>
@@ -383,7 +383,7 @@ export function ProjectDetailClient({ initial }: { initial: ProjectDetail }) {
                     type="date"
                     value={editStartDate}
                     onChange={(e) => setEditStartDate(e.target.value)}
-                    className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-pacify-gold/60 focus:outline-none [color-scheme:dark]"
+                    className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground focus:border-pacify-gold/60 focus:outline-none [color-scheme:light] dark:[color-scheme:dark]"
                   />
                 </div>
               </div>
@@ -393,7 +393,7 @@ export function ProjectDetailClient({ initial }: { initial: ProjectDetail }) {
                   type="date"
                   value={editDeadline}
                   onChange={(e) => setEditDeadline(e.target.value)}
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-pacify-gold/60 focus:outline-none [color-scheme:dark]"
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground focus:border-pacify-gold/60 focus:outline-none [color-scheme:light] dark:[color-scheme:dark]"
                 />
               </div>
               <div>
@@ -403,13 +403,13 @@ export function ProjectDetailClient({ initial }: { initial: ProjectDetail }) {
                   onChange={(e) => setEditShippingAddress(e.target.value)}
                   rows={3}
                   placeholder="Full ship-to address for this project…"
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none resize-none"
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none resize-none"
                 />
               </div>
             </div>
           ) : (
             <div className="min-w-0 space-y-2">
-              <h1 className="text-xl font-semibold text-white">{project.name}</h1>
+              <h1 className="text-xl font-semibold text-foreground">{project.name}</h1>
               <div className="flex flex-wrap items-center gap-2">
                 <DealTypeBadge dealType={project.dealType || "QUOTATION"} size="md" />
                 <StatusBadge status={project.status} />
@@ -450,7 +450,7 @@ export function ProjectDetailClient({ initial }: { initial: ProjectDetail }) {
                 <button
                   onClick={cancelEdit}
                   disabled={saving}
-                  className="px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50"
+                  className="px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-foreground transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -466,7 +466,7 @@ export function ProjectDetailClient({ initial }: { initial: ProjectDetail }) {
               <>
                 <button
                   onClick={enterEdit}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-foreground transition-colors"
                 >
                   <PencilSquareIcon className="h-4 w-4" />
                   Edit
@@ -494,7 +494,7 @@ export function ProjectDetailClient({ initial }: { initial: ProjectDetail }) {
           <div className="space-y-2 border-t border-gray-800 pt-5">
             <div className="flex items-center gap-2">
               <MapPinIcon className="h-4 w-4 text-pacify-gold/60" />
-              <h2 className="text-sm font-semibold text-white">Shipping address</h2>
+              <h2 className="text-sm font-semibold text-foreground">Shipping address</h2>
             </div>
             {project.shippingAddress ? (
               <p className="text-sm text-gray-300 whitespace-pre-wrap">
@@ -512,7 +512,7 @@ export function ProjectDetailClient({ initial }: { initial: ProjectDetail }) {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Bars3Icon className="h-4 w-4 text-pacify-gold/60" />
-            <h2 className="text-sm font-semibold text-white">Requirements</h2>
+            <h2 className="text-sm font-semibold text-foreground">Requirements</h2>
             {!editing && project.requirements.length > 0 && (
               <span className="rounded-full bg-gray-800 px-2 py-0.5 text-[11px] text-gray-400">
                 {project.requirements.length}
@@ -540,7 +540,7 @@ export function ProjectDetailClient({ initial }: { initial: ProjectDetail }) {
 
         {/* Notes */}
         <div className="space-y-2 border-t border-gray-800 pt-5">
-          <h2 className="text-sm font-semibold text-white">Notes</h2>
+          <h2 className="text-sm font-semibold text-foreground">Notes</h2>
           {editing ? (
             <EditableText
               value={editNotes}
@@ -566,16 +566,16 @@ export function ProjectDetailClient({ initial }: { initial: ProjectDetail }) {
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-xl border border-gray-700 bg-gray-900 p-6 shadow-2xl space-y-4">
-            <h2 className="text-base font-semibold text-white">Delete project?</h2>
+            <h2 className="text-base font-semibold text-foreground">Delete project?</h2>
             <p className="text-sm text-gray-300">
               Permanently delete{" "}
-              <span className="font-semibold text-white">{project.name}</span>? This cannot be undone.
+              <span className="font-semibold text-foreground">{project.name}</span>? This cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setConfirmDelete(false)}
                 disabled={deleting}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-foreground transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>

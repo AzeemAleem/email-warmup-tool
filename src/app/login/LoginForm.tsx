@@ -33,7 +33,7 @@ export function LoginForm() {
   }
 
   const fieldCls =
-    "w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-pacify-gold focus:ring-1 focus:ring-pacify-gold/30";
+    "w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-foreground placeholder-gray-500 focus:outline-none focus:border-pacify-gold focus:ring-1 focus:ring-pacify-gold/30";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

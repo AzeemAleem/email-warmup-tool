@@ -115,7 +115,7 @@ interface Props {
 }
 
 const inputCls =
-  "w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30";
+  "w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-foreground placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30";
 
 function numField(
   value: number,
@@ -212,7 +212,7 @@ function PaperCard({
         >
           {item.label}
         </h3>
-        <span className="text-sm font-bold text-white tabular-nums">
+        <span className="text-sm font-bold text-foreground tabular-nums">
           {isExcluded
             ? item.warning ?? "N/A"
             : formatPkrTotal(item.total)}
@@ -459,12 +459,12 @@ function LaminationCard({ item }: { item: CostLineResult }) {
         <h3
           className={clsx(
             "text-sm font-semibold",
-            isExcluded ? "text-amber-200" : "text-teal-200",
+            isExcluded ? "text-amber-800 dark:text-amber-200" : "text-teal-800 dark:text-teal-200",
           )}
         >
           Lamination
         </h3>
-        <span className="text-sm font-bold text-white tabular-nums">
+        <span className="text-sm font-bold text-foreground tabular-nums">
           {isExcluded
             ? item.warning ?? "N/A"
             : formatPkrTotal(item.total)}
@@ -541,7 +541,7 @@ function SpotUvCard({
           <h3 className="text-sm font-semibold text-violet-200">Spot UV</h3>
           <EstimateBadge />
         </div>
-        <span className="text-sm font-bold text-white tabular-nums">
+        <span className="text-sm font-bold text-foreground tabular-nums">
           {formatPkrTotal(item.total)}
         </span>
       </div>
@@ -654,7 +654,7 @@ function OverridableJobCard({
     <Card className={accentClass}>
       <div className="flex items-start justify-between gap-3 mb-3">
         <h3 className={`text-sm font-semibold ${titleClass}`}>{title}</h3>
-        <span className="text-sm font-bold text-white tabular-nums">
+        <span className="text-sm font-bold text-foreground tabular-nums">
           {formatPkrTotal(item.total)}
         </span>
       </div>
@@ -745,7 +745,7 @@ function PrintingCard({
     <Card className="border-pacify-navy/40 bg-pacify-navy/20">
       <div className="flex items-start justify-between gap-3 mb-3">
         <h3 className="text-sm font-semibold text-pacify-silver">Printing</h3>
-        <span className="text-sm font-bold text-white tabular-nums">
+        <span className="text-sm font-bold text-foreground tabular-nums">
           {formatPkrTotal(item.total)}
         </span>
       </div>
@@ -853,7 +853,7 @@ function PlatesCard({
         <h3 className="text-sm font-semibold text-fuchsia-200">
           Printing plates
         </h3>
-        <span className="text-sm font-bold text-white tabular-nums">
+        <span className="text-sm font-bold text-foreground tabular-nums">
           {formatPkrTotal(item.total)}
         </span>
       </div>
@@ -1089,7 +1089,7 @@ export function CostCalculation({
   if (!result) {
     return (
       <Card>
-        <h2 className="text-sm font-semibold text-white mb-2">Cost Calculation</h2>
+        <h2 className="text-sm font-semibold text-foreground mb-2">Cost Calculation</h2>
         <p className="text-sm text-gray-600 py-4 text-center">
           Enter valid box dimensions and quantity to see costs.
         </p>
@@ -1131,7 +1131,7 @@ export function CostCalculation({
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-white">Cost Calculation</h2>
+          <h2 className="text-sm font-semibold text-foreground">Cost Calculation</h2>
           <p className="text-xs text-gray-500 mt-0.5">
             {clientName?.trim()
               ? `Quote for ${clientName.trim()}`
@@ -1180,7 +1180,7 @@ export function CostCalculation({
                     greyboard: { ...DEFAULT_GREYBOARD_CONFIG },
                   })
                 }
-                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-foreground transition-colors"
               >
                 <ArrowPathIcon className="h-3.5 w-3.5" />
                 Reset to defaults
@@ -1219,7 +1219,7 @@ export function CostCalculation({
                     artPaper: { ...DEFAULT_ART_PAPER_CONFIG },
                   })
                 }
-                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-foreground transition-colors"
               >
                 <ArrowPathIcon className="h-3.5 w-3.5" />
                 Reset to defaults
@@ -1264,7 +1264,7 @@ export function CostCalculation({
                     morocco: { ...DEFAULT_MOROCCO_CONFIG },
                   })
                 }
-                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-foreground transition-colors"
               >
                 <ArrowPathIcon className="h-3.5 w-3.5" />
                 Reset to defaults
@@ -1320,7 +1320,7 @@ export function CostCalculation({
                     lamination: { ...DEFAULT_LAMINATION_CONFIG },
                   })
                 }
-                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-foreground transition-colors"
               >
                 <ArrowPathIcon className="h-3.5 w-3.5" />
                 Reset to defaults
@@ -1361,7 +1361,7 @@ export function CostCalculation({
                     spotUv: { ...DEFAULT_SPOT_UV_CONFIG },
                   })
                 }
-                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-foreground transition-colors"
               >
                 <ArrowPathIcon className="h-3.5 w-3.5" />
                 Reset to defaults
@@ -1431,7 +1431,7 @@ export function CostCalculation({
                     die: { ...DEFAULT_DIE_CONFIG },
                   })
                 }
-                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-foreground transition-colors"
               >
                 <ArrowPathIcon className="h-3.5 w-3.5" />
                 Reset to defaults
@@ -1467,7 +1467,7 @@ export function CostCalculation({
                     printing: { ...DEFAULT_PRINTING_CONFIG },
                   })
                 }
-                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-foreground transition-colors"
               >
                 <ArrowPathIcon className="h-3.5 w-3.5" />
                 Reset to defaults
@@ -1503,7 +1503,7 @@ export function CostCalculation({
                     plates: { ...DEFAULT_PLATES_CONFIG },
                   })
                 }
-                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-foreground transition-colors"
               >
                 <ArrowPathIcon className="h-3.5 w-3.5" />
                 Reset to defaults
@@ -1589,7 +1589,7 @@ export function CostCalculation({
                       [key]: { ...defaults },
                     })
                   }
-                  className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors"
+                  className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-foreground transition-colors"
                 >
                   <ArrowPathIcon className="h-3.5 w-3.5" />
                   Reset to defaults
@@ -1626,7 +1626,7 @@ export function CostCalculation({
                     weight: { ...DEFAULT_WEIGHT_CONFIG },
                   })
                 }
-                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-foreground transition-colors"
               >
                 <ArrowPathIcon className="h-3.5 w-3.5" />
                 Reset to defaults
@@ -1668,7 +1668,7 @@ export function CostCalculation({
                     shipping: { ...DEFAULT_SHIPPING_CONFIG },
                   })
                 }
-                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-foreground transition-colors"
               >
                 <ArrowPathIcon className="h-3.5 w-3.5" />
                 Reset to defaults
@@ -1718,7 +1718,7 @@ export function CostCalculation({
                     fx: { ...DEFAULT_FX_CONFIG },
                   })
                 }
-                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-foreground transition-colors"
               >
                 <ArrowPathIcon className="h-3.5 w-3.5" />
                 Reset to defaults
@@ -1744,7 +1744,7 @@ export function CostCalculation({
           <button
             type="button"
             onClick={resetAllDefaults}
-            className="text-xs text-gray-500 hover:text-white transition-colors"
+            className="text-xs text-gray-500 hover:text-foreground transition-colors"
           >
             Reset all cost defaults
           </button>
@@ -1763,8 +1763,8 @@ export function CostCalculation({
         {greyboard && (
           <Card className="border-amber-500/20 bg-amber-500/5">
             <div className="flex items-start justify-between gap-3 mb-3">
-              <h3 className="text-sm font-semibold text-amber-200">Greyboard</h3>
-              <span className="text-sm font-bold text-white tabular-nums">
+              <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200">Greyboard</h3>
+              <span className="text-sm font-bold text-foreground tabular-nums">
                 {formatPkrTotal(greyboard.total)}
               </span>
             </div>
@@ -1929,7 +1929,7 @@ export function CostCalculation({
               <h3 className="text-sm font-semibold text-emerald-200">
                 Weight & Shipping
               </h3>
-              <span className="text-sm font-bold text-white tabular-nums">
+              <span className="text-sm font-bold text-foreground tabular-nums">
                 {formatPkrTotal(shipping.total)}
               </span>
             </div>
@@ -1969,7 +1969,7 @@ export function CostCalculation({
                       className="mt-0.5 border-gray-600 bg-gray-800 text-emerald-500 focus:ring-emerald-500/40"
                     />
                     <span>
-                      <span className="font-medium text-white">{opt.label}</span>
+                      <span className="font-medium text-foreground">{opt.label}</span>
                       <span className="block text-[10px] text-gray-600">
                         {opt.hint}
                       </span>
@@ -2144,7 +2144,7 @@ export function CostCalculation({
                         <p className="text-[10px] uppercase tracking-wide text-emerald-300/70 font-semibold">
                           Recommended
                         </p>
-                        <p className="text-sm font-semibold text-white mt-0.5">
+                        <p className="text-sm font-semibold text-foreground mt-0.5">
                           {bestLabel || "Best carton"}{" "}
                           <span className="text-gray-500 font-normal">
                             ({Number(shipping.meta?.airCartonLengthIn ?? 0)} ×{" "}
@@ -2158,7 +2158,7 @@ export function CostCalculation({
                       <div className="grid grid-cols-2 gap-3 text-xs">
                         <div className="rounded-md bg-gray-900/60 border border-gray-800 px-3 py-2.5">
                           <p className="text-gray-500">Units / carton</p>
-                          <p className="text-lg font-bold text-white tabular-nums mt-0.5">
+                          <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">
                             {Number(shipping.meta?.unitsPerCarton ?? 0).toLocaleString(
                               "en-US",
                             )}
@@ -2273,7 +2273,7 @@ export function CostCalculation({
                                 )}
                               >
                                 <td className="px-2 py-1.5 text-gray-300">
-                                  <span className="font-medium text-white">
+                                  <span className="font-medium text-foreground">
                                     {opt.label}
                                   </span>
                                   {isBest && (
@@ -2293,7 +2293,7 @@ export function CostCalculation({
                                 <td className="px-2 py-1.5 text-right tabular-nums text-gray-300">
                                   {opt.unitsByWeight.toLocaleString("en-US")}
                                 </td>
-                                <td className="px-2 py-1.5 text-right tabular-nums text-white font-medium">
+                                <td className="px-2 py-1.5 text-right tabular-nums text-foreground font-medium">
                                   {feasible
                                     ? opt.unitsPerCarton.toLocaleString("en-US")
                                     : "0"}
@@ -2303,7 +2303,7 @@ export function CostCalculation({
                                     ? opt.cartonsNeeded.toLocaleString("en-US")
                                     : "—"}
                                 </td>
-                                <td className="px-2 py-1.5 text-right tabular-nums text-white font-medium">
+                                <td className="px-2 py-1.5 text-right tabular-nums text-foreground font-medium">
                                   {feasible
                                     ? `${opt.chargeableKg.toLocaleString("en-US", {
                                         maximumFractionDigits: 2,
@@ -2342,13 +2342,13 @@ export function CostCalculation({
           <Card className="border-amber-500/20 bg-amber-500/5">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-amber-200">Extra</h3>
+                <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200">Extra</h3>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Additional expenses
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm font-bold text-white tabular-nums">
+                <p className="text-sm font-bold text-foreground tabular-nums">
                   {formatPkrTotal(extra.total)}
                 </p>
                 <p className="text-xs text-gray-500">
@@ -2362,9 +2362,9 @@ export function CostCalculation({
         {otherItems.map((item) => (
           <Card key={item.id}>
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white">{item.label}</h3>
+              <h3 className="text-sm font-semibold text-foreground">{item.label}</h3>
               <div className="text-right">
-                <p className="text-sm font-bold text-white tabular-nums">
+                <p className="text-sm font-bold text-foreground tabular-nums">
                   {item.excluded
                     ? item.warning ?? "N/A"
                     : formatPkrTotal(item.total)}

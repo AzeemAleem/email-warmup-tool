@@ -122,7 +122,7 @@ export function ProjectsClient({ initial }: { initial: ProjectListItem[] }) {
   return (
     <div className="space-y-6 max-w-6xl">
       <div>
-        <h1 className="text-xl font-semibold text-white">Projects</h1>
+        <h1 className="text-xl font-semibold text-foreground">Projects</h1>
         <p className="text-sm text-gray-400 mt-1">
           All projects across clients. Active and recently updated first.
         </p>
@@ -137,7 +137,7 @@ export function ProjectsClient({ initial }: { initial: ProjectListItem[] }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search project, client, tracking ID…"
-            className="w-full rounded-lg border border-gray-700 bg-gray-800 py-2 pl-9 pr-3 text-sm text-white placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
+            className="w-full rounded-lg border border-gray-700 bg-gray-800 py-2 pl-9 pr-3 text-sm text-foreground placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
           />
         </div>
 
@@ -148,7 +148,7 @@ export function ProjectsClient({ initial }: { initial: ProjectListItem[] }) {
           <select
             value={clientFilter}
             onChange={(e) => setClientFilter(e.target.value)}
-            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
+            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
           >
             <option value="ALL">All clients</option>
             {clients.map((c) => (
@@ -166,7 +166,7 @@ export function ProjectsClient({ initial }: { initial: ProjectListItem[] }) {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
+            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
           >
             {STATUS_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -183,7 +183,7 @@ export function ProjectsClient({ initial }: { initial: ProjectListItem[] }) {
           <select
             value={dealFilter}
             onChange={(e) => setDealFilter(e.target.value)}
-            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
+            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
           >
             {DEAL_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -196,7 +196,7 @@ export function ProjectsClient({ initial }: { initial: ProjectListItem[] }) {
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center rounded-xl border border-dashed border-gray-700">
-          <FolderOpenIcon className="h-10 w-10 text-gray-700 mb-3" />
+          <FolderOpenIcon className="h-10 w-10 text-gray-400 mb-3" />
           <p className="text-sm font-medium text-gray-400">
             {initial.length === 0
               ? "No projects yet."
@@ -245,7 +245,7 @@ export function ProjectsClient({ initial }: { initial: ProjectListItem[] }) {
                       )}
                     >
                       <td className="px-4 py-3 min-w-0">
-                        <p className="font-medium text-white truncate">
+                        <p className="font-medium text-foreground truncate">
                           {p.name}
                         </p>
                         {p.trackingId && (

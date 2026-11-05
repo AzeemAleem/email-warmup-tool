@@ -138,7 +138,7 @@ function CalcRow({
           <Icon className="h-4 w-4 text-pacify-gold" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white truncate">
+          <p className="text-sm font-medium text-foreground truncate">
             {calc.label || `${typeLabel} estimate`}
           </p>
           <p className="text-xs text-gray-500">{fmt(calc.createdAt)}</p>
@@ -186,7 +186,7 @@ function CalcRow({
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-700 hover:text-white transition-colors shrink-0"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-700 hover:text-foreground transition-colors shrink-0"
         >
           {expanded ? (
             <ChevronUpIcon className="h-4 w-4" />
@@ -220,7 +220,7 @@ function CalcRow({
               snap[k] != null ? (
                 <div key={k} className="bg-gray-800 rounded px-2 py-1.5">
                   <p className="text-gray-500 uppercase text-[10px]">{k}</p>
-                  <p className="text-white font-mono mt-0.5">
+                  <p className="text-foreground font-mono mt-0.5">
                     {Number(snap[k]).toFixed(3)}{" "}
                     <span className="text-gray-500">
                       {String(snap.unit ?? "in")}
@@ -232,7 +232,7 @@ function CalcRow({
             {qty != null && (
               <div className="bg-gray-800 rounded px-2 py-1.5">
                 <p className="text-gray-500 uppercase text-[10px]">Qty</p>
-                <p className="text-white font-mono mt-0.5">
+                <p className="text-foreground font-mono mt-0.5">
                   {qty.toLocaleString()}
                 </p>
               </div>
@@ -240,7 +240,7 @@ function CalcRow({
             {snap.openWidthIn != null && (
               <div className="bg-gray-800 rounded px-2 py-1.5">
                 <p className="text-gray-500 uppercase text-[10px]">Open W</p>
-                <p className="text-white font-mono mt-0.5">
+                <p className="text-foreground font-mono mt-0.5">
                   {Number(snap.openWidthIn).toFixed(3)} in
                 </p>
               </div>
@@ -248,7 +248,7 @@ function CalcRow({
             {snap.openHeightIn != null && (
               <div className="bg-gray-800 rounded px-2 py-1.5">
                 <p className="text-gray-500 uppercase text-[10px]">Open H</p>
-                <p className="text-white font-mono mt-0.5">
+                <p className="text-foreground font-mono mt-0.5">
                   {Number(snap.openHeightIn).toFixed(3)} in
                 </p>
               </div>
@@ -264,7 +264,7 @@ function CalcRow({
               {productionPkr != null && (
                 <div className="flex justify-between gap-2">
                   <span className="text-gray-400">Production cost</span>
-                  <span className="text-white tabular-nums text-right">
+                  <span className="text-foreground tabular-nums text-right">
                     {formatPkrTotal(productionPkr)}
                     {productionUsd != null && (
                       <span className="block text-gray-500">
@@ -277,7 +277,7 @@ function CalcRow({
               {shippingPkr != null && (
                 <div className="flex justify-between gap-2">
                   <span className="text-gray-400">Shipping cost</span>
-                  <span className="text-white tabular-nums text-right">
+                  <span className="text-foreground tabular-nums text-right">
                     {formatPkrTotal(shippingPkr)}
                     {shippingUsd != null && (
                       <span className="block text-gray-500">
@@ -290,7 +290,7 @@ function CalcRow({
               {basePkr != null && (
                 <div className="flex justify-between gap-2">
                   <span className="text-gray-400">Base total</span>
-                  <span className="text-white tabular-nums text-right">
+                  <span className="text-foreground tabular-nums text-right">
                     {formatPkrTotal(basePkr)}
                     {baseUsd != null && (
                       <span className="block text-gray-500">
@@ -318,7 +318,7 @@ function CalcRow({
               {perUnitSellingPkr != null && (
                 <div className="flex justify-between gap-2">
                   <span className="text-gray-400">Per unit selling</span>
-                  <span className="text-white tabular-nums text-right">
+                  <span className="text-foreground tabular-nums text-right">
                     {formatPkrTotal(perUnitSellingPkr)}
                     {perUnitSellingUsd != null && (
                       <span className="block text-gray-500">
@@ -331,7 +331,7 @@ function CalcRow({
               {perUnitBasePkr != null && (
                 <div className="flex justify-between gap-2">
                   <span className="text-gray-400">Per unit base</span>
-                  <span className="text-white tabular-nums text-right">
+                  <span className="text-foreground tabular-nums text-right">
                     {formatPkrTotal(perUnitBasePkr)}
                     {perUnitBaseUsd != null && (
                       <span className="block text-gray-500">
@@ -397,7 +397,7 @@ function CalcRow({
                         )}
                       </div>
                       <div className="text-right shrink-0 tabular-nums">
-                        <p className="text-white font-mono">
+                        <p className="text-foreground font-mono">
                           {formatPkrTotal(item.total)}
                         </p>
                         {item.perUnit != null && qty != null && (
@@ -522,7 +522,7 @@ function InvoiceRow({
           <DocumentTextIcon className="h-4 w-4 text-blue-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white truncate group-hover:text-pacify-gold transition-colors">
+          <p className="text-sm font-medium text-foreground truncate group-hover:text-pacify-gold transition-colors">
             {invoice.orderTitle || "Quotation"}{" "}
             <span className="text-gray-500 font-mono text-xs">
               #{invoice.quoteNo}
@@ -532,7 +532,7 @@ function InvoiceRow({
         </div>
         {invoice.totalAmount != null && (
           <div className="text-right shrink-0">
-            <p className="text-sm font-semibold text-white tabular-nums">
+            <p className="text-sm font-semibold text-foreground tabular-nums">
               {fmtMoney(invoice.totalAmount, invoice.currency)}
             </p>
             {invoice.quantity != null && (
@@ -639,7 +639,7 @@ export function ProjectHistory({
       ) : tab === "calculations" ? (
         calculations.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-10 text-center rounded-xl border border-dashed border-gray-700">
-            <CubeIcon className="h-7 w-7 text-gray-700" />
+            <CubeIcon className="h-7 w-7 text-gray-400" />
             <p className="text-sm text-gray-500">No calculations saved yet.</p>
             <p className="text-xs text-gray-600">
               Use the{" "}
@@ -672,7 +672,7 @@ export function ProjectHistory({
         )
       ) : invoices.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-10 text-center rounded-xl border border-dashed border-gray-700">
-          <DocumentTextIcon className="h-7 w-7 text-gray-700" />
+          <DocumentTextIcon className="h-7 w-7 text-gray-400" />
           <p className="text-sm text-gray-500">No invoices linked yet.</p>
           <p className="text-xs text-gray-600">
             In the{" "}

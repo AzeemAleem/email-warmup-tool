@@ -14,8 +14,8 @@ export function DealTypeBadge({
         "inline-flex items-center rounded-full border font-semibold uppercase tracking-wide",
         size === "sm" ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-1 text-xs",
         won
-          ? "bg-emerald-900/40 text-emerald-300 border-emerald-600/50"
-          : "bg-amber-900/30 text-amber-300/90 border-amber-700/40",
+          ? "bg-emerald-500/15 text-emerald-800 border-emerald-600/30 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-600/50"
+          : "bg-amber-500/15 text-amber-800 border-amber-600/30 dark:bg-amber-900/30 dark:text-amber-300/90 dark:border-amber-700/40",
       )}
       title={won ? "Order confirmed / won" : "Quotation only"}
     >
@@ -35,8 +35,8 @@ export function ClientDealBadge({
       className={clsx(
         "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
         hasWon
-          ? "bg-emerald-900/40 text-emerald-300 border-emerald-600/50"
-          : "bg-amber-900/30 text-amber-300/90 border-amber-700/40",
+          ? "bg-emerald-500/15 text-emerald-800 border-emerald-600/30 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-600/50"
+          : "bg-amber-500/15 text-amber-800 border-amber-600/30 dark:bg-amber-900/30 dark:text-amber-300/90 dark:border-amber-700/40",
       )}
       title={
         hasWon

@@ -80,7 +80,7 @@ export function EventsTable({
               return () => clearTimeout(debounce);
             }}
             placeholder="Search subject, sender, receiver..."
-            className="pl-9 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 w-64"
+            className="pl-9 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-foreground placeholder-gray-500 focus:outline-none focus:border-indigo-500 w-64"
           />
         </div>
 

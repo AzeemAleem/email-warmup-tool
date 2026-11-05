@@ -54,7 +54,7 @@ export default async function InvoiceViewPage({
           {invoice.project ? (
             <Link
               href={`/clients/${invoice.project.clientId}/projects/${invoice.project.id}`}
-              className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-foreground transition-colors"
             >
               <ArrowLeftIcon className="h-4 w-4" />
               Back to {invoice.project.name}
@@ -62,13 +62,13 @@ export default async function InvoiceViewPage({
           ) : (
             <Link
               href="/invoices"
-              className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-foreground transition-colors"
             >
               <ArrowLeftIcon className="h-4 w-4" />
               Back to saved invoices
             </Link>
           )}
-          <h1 className="text-lg font-semibold text-white truncate">
+          <h1 className="text-lg font-semibold text-foreground truncate">
             Quotation {invoice.quoteNo}
           </h1>
           {invoice.project && (

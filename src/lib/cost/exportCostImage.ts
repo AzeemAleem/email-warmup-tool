@@ -561,7 +561,7 @@ export async function downloadMailerCostImage(
   if (stockItem?.meta?.totalSheets != null) {
     specs.push([
       "Total sheets",
-      `${Number(stockItem.meta.totalSheets).toLocaleString("en-US")} (out+in+200)`,
+      `${Number(stockItem.meta.totalSheets).toLocaleString("en-US")} (from qty × print sides)`,
     ]);
   }
   if (extraItem) {

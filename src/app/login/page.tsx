@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { LoginForm } from "./LoginForm";
 
 export default async function LoginPage() {
@@ -9,7 +10,13 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
+    <div className="relative min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle
+          collapsed
+          className="w-10 h-10 rounded-full border border-gray-700 bg-surface"
+        />
+      </div>
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="mx-auto mb-4 h-14 w-14 rounded-xl bg-pacify-forest flex items-center justify-center ring-1 ring-pacify-gold/40">
@@ -17,7 +24,7 @@ export default async function LoginPage() {
               P
             </span>
           </div>
-          <h1 className="text-2xl font-semibold text-white tracking-tight">
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight">
             Pacify Packaging
           </h1>
           <p className="text-sm text-gray-400 mt-1.5">
@@ -25,7 +32,7 @@ export default async function LoginPage() {
           </p>
         </div>
 
-        <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 shadow-2xl shadow-black/40">
+        <div className="bg-surface border border-gray-700 rounded-xl p-6 shadow-[var(--shadow-card)]">
           <LoginForm />
         </div>
       </div>

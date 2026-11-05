@@ -138,7 +138,7 @@ export function ProjectPicker({
             <BuildingOffice2Icon className="h-4 w-4 text-pacify-gold/70 shrink-0" />
             <span className="flex-1 min-w-0">
               <span className="text-gray-400 text-xs">{value.clientName} / </span>
-              <span className="text-white font-medium">{value.projectName}</span>
+              <span className="text-foreground font-medium">{value.projectName}</span>
             </span>
             <button
               type="button"
@@ -172,7 +172,7 @@ export function ProjectPicker({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search clients or projects…"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-8 pr-3 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-pacify-gold/40"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-8 pr-3 py-1.5 text-sm text-foreground placeholder-gray-600 focus:outline-none focus:border-pacify-gold/40"
               />
             </div>
           </div>

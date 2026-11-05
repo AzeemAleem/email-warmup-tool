@@ -11,7 +11,7 @@ export async function PoolHealth() {
 
   return (
     <Card>
-      <h2 className="text-sm font-semibold text-white mb-4">Pool Health</h2>
+      <h2 className="text-sm font-semibold text-foreground mb-4">Pool Health</h2>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

@@ -52,7 +52,7 @@ export function InvoicePreview({ payload }: { payload: InvoiceDraftPayload }) {
     : [];
 
   return (
-    <div className="mx-auto max-w-[210mm] space-y-6">
+    <div className="invoice-paper mx-auto max-w-[210mm] space-y-6">
       {/* Page 1 — quotation look */}
       <article
         className="bg-white text-gray-900 shadow-2xl rounded-sm overflow-hidden border border-gray-200"

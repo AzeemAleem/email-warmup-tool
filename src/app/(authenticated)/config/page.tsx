@@ -23,7 +23,7 @@ export default async function ConfigPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-xl font-semibold text-white">Configuration</h1>
+        <h1 className="text-xl font-semibold text-foreground">Configuration</h1>
         <p className="text-sm text-gray-400 mt-1">
           All values here are stored in the database and used by the Contabo
           worker. Safety limits at the top are the real Google-protection rules.

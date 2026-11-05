@@ -112,7 +112,7 @@ function Input({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
+      className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
     />
   );
 }
@@ -134,7 +134,7 @@ function Textarea({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
-      className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40 resize-none"
+      className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40 resize-none"
     />
   );
 }
@@ -165,10 +165,10 @@ function Modal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
       <div className="w-full max-w-lg rounded-xl border border-gray-700 bg-gray-900 shadow-2xl max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between border-b border-gray-700 px-6 py-4 shrink-0">
-          <h2 className="text-base font-semibold text-white">{title}</h2>
+          <h2 className="text-base font-semibold text-foreground">{title}</h2>
           <button
             onClick={onClose}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-800 hover:text-foreground transition-colors"
           >
             <XMarkIcon className="h-4 w-4" />
           </button>
@@ -224,7 +224,7 @@ function EditClientForm({
         <button
           onClick={onCancel}
           disabled={saving}
-          className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50"
+          className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-foreground transition-colors disabled:opacity-50"
         >
           Cancel
         </button>
@@ -296,7 +296,7 @@ function ProjectForm({
           <select
             value={form.status}
             onChange={(e) => set("status")(e.target.value)}
-            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
+            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
           >
             <option value="ACTIVE">Active</option>
             <option value="ON_HOLD">On hold</option>
@@ -308,7 +308,7 @@ function ProjectForm({
           <select
             value={form.dealType}
             onChange={(e) => set("dealType")(e.target.value)}
-            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
+            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
           >
             <option value="QUOTATION">Quotation only</option>
             <option value="WON">Won / Confirmed order</option>
@@ -324,7 +324,7 @@ function ProjectForm({
             type="date"
             value={form.startDate}
             onChange={(e) => set("startDate")(e.target.value)}
-            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40 [color-scheme:dark]"
+            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40 [color-scheme:light] dark:[color-scheme:dark]"
           />
         </Field>
       </div>
@@ -333,7 +333,7 @@ function ProjectForm({
           type="date"
           value={form.deadline}
           onChange={(e) => set("deadline")(e.target.value)}
-          className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40 [color-scheme:dark]"
+          className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40 [color-scheme:light] dark:[color-scheme:dark]"
         />
       </Field>
       <Field label="Shipping address">
@@ -356,7 +356,7 @@ function ProjectForm({
         <button
           onClick={onCancel}
           disabled={saving}
-          className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50"
+          className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-foreground transition-colors disabled:opacity-50"
         >
           Cancel
         </button>
@@ -391,7 +391,7 @@ function ProjectCard({
     <div className="group relative rounded-xl border border-gray-700 bg-gray-900 hover:border-pacify-gold/40 transition-colors">
       <button type="button" onClick={onClick} className="w-full text-left p-5 pr-20">
         <div className="flex items-start justify-between gap-3 mb-2">
-          <p className="text-sm font-semibold text-white leading-snug">{project.name}</p>
+          <p className="text-sm font-semibold text-foreground leading-snug">{project.name}</p>
           <div className="flex flex-col items-end gap-1 shrink-0">
             <DealTypeBadge dealType={project.dealType || "QUOTATION"} />
             <StatusBadge status={project.status} />
@@ -482,13 +482,13 @@ function ConfirmDelete({
     <Modal title="Confirm delete" onClose={onCancel}>
       <div className="space-y-4">
         <p className="text-sm text-gray-300">
-          Permanently delete <span className="font-semibold text-white">{label}</span>? This cannot be undone.
+          Permanently delete <span className="font-semibold text-foreground">{label}</span>? This cannot be undone.
         </p>
         <div className="flex justify-end gap-2">
           <button
             onClick={onCancel}
             disabled={deleting}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50"
+            className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-foreground transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
@@ -667,7 +667,7 @@ export function ClientDetailClient({ initial }: { initial: ClientDetail }) {
       {/* Back */}
       <Link
         href="/clients"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-foreground transition-colors"
       >
         <ArrowLeftIcon className="h-4 w-4" />
         Back to clients
@@ -678,7 +678,7 @@ export function ClientDetailClient({ initial }: { initial: ClientDetail }) {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-2 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-semibold text-white">{client.name}</h1>
+              <h1 className="text-xl font-semibold text-foreground">{client.name}</h1>
               <ClientDealBadge
                 hasWon={client.projects.some((p) => p.dealType === "WON")}
               />
@@ -709,7 +709,7 @@ export function ClientDetailClient({ initial }: { initial: ClientDetail }) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => { setFormError(undefined); setEditingClient(true); }}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-foreground transition-colors"
             >
               <PencilSquareIcon className="h-4 w-4" />
               Edit
@@ -728,7 +728,7 @@ export function ClientDetailClient({ initial }: { initial: ClientDetail }) {
       {/* Projects section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-white">Projects</h2>
+          <h2 className="text-base font-semibold text-foreground">Projects</h2>
           <button
             onClick={() => { setFormError(undefined); setShowCreateProject(true); }}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold bg-pacify-gold text-pacify-black hover:bg-pacify-gold/90 transition-colors"
@@ -740,7 +740,7 @@ export function ClientDetailClient({ initial }: { initial: ClientDetail }) {
 
         {client.projects.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 py-14 text-center">
-            <FolderOpenIcon className="h-8 w-8 text-gray-700 mb-2" />
+            <FolderOpenIcon className="h-8 w-8 text-gray-400 mb-2" />
             <p className="text-sm font-medium text-gray-400">No projects yet</p>
             <p className="text-xs text-gray-600 mt-1">
               Add the first project for {client.name}.

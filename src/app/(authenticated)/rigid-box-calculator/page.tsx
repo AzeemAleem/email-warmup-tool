@@ -747,7 +747,7 @@ function RigidBoxCalculatorForm() {
 
   const inputCls = (hasError: boolean) =>
     clsx(
-      "w-full px-3 py-2.5 bg-gray-800 border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1",
+      "w-full px-3 py-2.5 bg-gray-800 border rounded-lg text-sm text-foreground placeholder-gray-500 focus:outline-none focus:ring-1",
       hasError
         ? "border-red-500/60 focus:border-red-500 focus:ring-red-500/30"
         : "border-gray-700 focus:border-indigo-500 focus:ring-indigo-500/30",
@@ -772,7 +772,7 @@ function RigidBoxCalculatorForm() {
     >
       <div className="flex-1 min-w-0 space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-xl font-semibold text-white">Rigid Box Calculator</h1>
+        <h1 className="text-xl font-semibold text-foreground">Rigid Box Calculator</h1>
         <p className="text-sm text-gray-400 mt-1">
           Enter closed rigid box dimensions to get the flat open size, then find
           the best printing sheet and paper cost.
@@ -1016,7 +1016,7 @@ function RigidBoxCalculatorForm() {
       </Card>
 
       <Card>
-        <h2 className="text-sm font-semibold text-white mb-4">
+        <h2 className="text-sm font-semibold text-foreground mb-4">
           Closed box dimensions
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1223,13 +1223,13 @@ function RigidBoxCalculatorForm() {
 
       <Card>
         <div className="flex items-start justify-between gap-3 mb-4">
-          <h2 className="text-sm font-semibold text-white">Open size (flat sheet)</h2>
+          <h2 className="text-sm font-semibold text-foreground">Open size (flat sheet)</h2>
           <div className="flex gap-2 shrink-0">
             <button
               type="button"
               onClick={copyResult}
               disabled={!result}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-700 bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-700 bg-gray-800 text-gray-300 hover:text-foreground hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {copied ? (
                 <>
@@ -1246,7 +1246,7 @@ function RigidBoxCalculatorForm() {
             <button
               type="button"
               onClick={reset}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-700 bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-700 bg-gray-800 text-gray-300 hover:text-foreground hover:bg-gray-700 transition-colors"
             >
               <ArrowPathIcon className="h-3.5 w-3.5" />
               Reset
@@ -1269,7 +1269,7 @@ function RigidBoxCalculatorForm() {
                 <button
                   type="button"
                   onClick={clearOpenOverride}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-amber-500/40 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200 hover:bg-amber-500/20 transition-colors"
                 >
                   <ArrowPathIcon className="h-3.5 w-3.5" />
                   Use calculated
@@ -1303,7 +1303,7 @@ function RigidBoxCalculatorForm() {
                     className={clsx(
                       "w-full px-3 py-2 bg-gray-900/60 border rounded-lg text-2xl font-bold tabular-nums focus:outline-none focus:ring-1",
                       openOverride
-                        ? "border-amber-500/40 text-amber-200 focus:border-amber-400 focus:ring-amber-500/30"
+                        ? "border-amber-500/40 text-amber-800 dark:text-amber-200 focus:border-amber-400 focus:ring-amber-500/30"
                         : "border-indigo-500/30 text-indigo-300 focus:border-indigo-400 focus:ring-indigo-500/30",
                     )}
                   />
@@ -1341,7 +1341,7 @@ function RigidBoxCalculatorForm() {
                     className={clsx(
                       "w-full px-3 py-2 bg-gray-900/60 border rounded-lg text-2xl font-bold tabular-nums focus:outline-none focus:ring-1",
                       openOverride
-                        ? "border-amber-500/40 text-amber-200 focus:border-amber-400 focus:ring-amber-500/30"
+                        ? "border-amber-500/40 text-amber-800 dark:text-amber-200 focus:border-amber-400 focus:ring-amber-500/30"
                         : "border-cyan-500/30 text-cyan-300 focus:border-cyan-400 focus:ring-cyan-500/30",
                     )}
                   />
@@ -1359,7 +1359,7 @@ function RigidBoxCalculatorForm() {
             {result ? (
               <p className="text-sm text-gray-400">
                 Effective:{" "}
-                <span className="text-white font-semibold tabular-nums">
+                <span className="text-foreground font-semibold tabular-nums">
                   {formatLength(result[unit].openWidth, unit)} ×{" "}
                   {formatLength(result[unit].openHeight, unit)} {unit}
                 </span>
@@ -1399,10 +1399,10 @@ function RigidBoxCalculatorForm() {
                           className={clsx(u === unit && "bg-indigo-500/5")}
                         >
                           <td className="px-3 py-2 text-gray-400 font-medium">{u}</td>
-                          <td className="px-3 py-2 text-right text-white tabular-nums">
+                          <td className="px-3 py-2 text-right text-foreground tabular-nums">
                             {formatLength(result[u].openWidth, u)}
                           </td>
-                          <td className="px-3 py-2 text-right text-white tabular-nums">
+                          <td className="px-3 py-2 text-right text-foreground tabular-nums">
                             {formatLength(result[u].openHeight, u)}
                           </td>
                         </tr>

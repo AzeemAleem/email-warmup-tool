@@ -72,7 +72,7 @@ function Field({
 }
 
 const inputCls =
-  "w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40 tabular-nums";
+  "w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40 tabular-nums";
 
 export function ActualExpensePanel({
   clientId,
@@ -226,7 +226,7 @@ export function ActualExpensePanel({
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-white">Actual expense</h3>
+          <h3 className="text-sm font-semibold text-foreground">Actual expense</h3>
           <p className="text-xs text-gray-500 mt-0.5">
             Real costs after manufacturing — separate from estimates (calculations / invoices).
           </p>
@@ -246,8 +246,8 @@ export function ActualExpensePanel({
           className={clsx(
             "text-xs px-3 py-2 rounded-lg border",
             msg.includes("failed")
-              ? "bg-red-900/30 border-red-700/50 text-red-300"
-              : "bg-green-900/20 border-green-700/40 text-green-300",
+              ? "bg-red-900/30 border-red-700/50 text-red-700 dark:text-red-300"
+              : "bg-green-900/20 border-green-700/40 text-emerald-800 dark:text-green-300",
           )}
         >
           {msg}
@@ -400,8 +400,8 @@ export function ActualExpensePanel({
             className={clsx(
               "rounded-lg border px-3 py-2 text-sm font-semibold tabular-nums",
               displayProfit != null && displayProfit < 0
-                ? "border-red-700/50 bg-red-900/20 text-red-300"
-                : "border-gray-700 bg-gray-800 text-green-300",
+                ? "border-red-700/50 bg-red-900/20 text-red-700 dark:text-red-300"
+                : "border-gray-700 bg-gray-800 text-emerald-700 dark:text-green-300",
             )}
           >
             {displayProfit != null ? formatPkrTotal(displayProfit) : "—"}
@@ -443,7 +443,7 @@ export function ActualExpensePanel({
           onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
           rows={2}
           placeholder="Payment refs, carrier notes…"
-          className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none resize-none"
+          className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none resize-none"
         />
       </Field>
 
@@ -451,7 +451,7 @@ export function ActualExpensePanel({
       <div className="rounded-lg border border-pacify-gold/20 bg-pacify-forest/20 p-3 grid sm:grid-cols-3 gap-3 text-xs">
         <div>
           <p className="text-gray-500 uppercase text-[10px]">Remaining</p>
-          <p className="text-white font-semibold tabular-nums mt-0.5">
+          <p className="text-foreground font-semibold tabular-nums mt-0.5">
             {form.remainingAmountUsd != null
               ? formatUsd(form.remainingAmountUsd)
               : "—"}
@@ -462,7 +462,7 @@ export function ActualExpensePanel({
         </div>
         <div>
           <p className="text-gray-500 uppercase text-[10px]">Total expense</p>
-          <p className="text-white font-semibold tabular-nums mt-0.5">
+          <p className="text-foreground font-semibold tabular-nums mt-0.5">
             {form.totalExpensePkr != null
               ? formatPkrTotal(form.totalExpensePkr)
               : "—"}

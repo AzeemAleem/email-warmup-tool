@@ -2,9 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Pacify Packaging — Dark Mode theme tokens */
+/* Pacify Packaging — theme tokens.
+   Gray RGB channels are semantic (950 = page, 900 = card, 800 = input)
+   so existing Tailwind gray-* classes adapt in both modes. */
+
 :root,
-[data-theme="dark"] {
+html.dark,
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --gray-50: 248 248 248;
+  --gray-100: 240 240 240;
+  --gray-200: 229 229 229;
+  --gray-300: 229 229 229;
+  --gray-400: 176 176 176;
+  --gray-500: 107 107 107;
+  --gray-600: 102 102 102;
+  --gray-700: 51 51 51;
+  --gray-800: 31 31 31;
+  --gray-900: 26 26 26;
+  --gray-950: 13 13 13;
+
   --bg-primary: #0d0d0d;
   --bg-surface: #1a1a1a;
   --bg-elevated: #1f1f1f;
@@ -19,8 +36,10 @@
 
   --btn-primary-bg: #ffffff;
   --btn-primary-text: #1a1a1a;
+  --btn-primary-hover: #e5e5e5;
   --btn-secondary-border: #ffffff;
   --btn-secondary-text: #ffffff;
+  --btn-secondary-hover: color-mix(in srgb, #ffffff 8%, transparent);
 
   --accent-forest: #1a3a2f;
   --accent-gold: #c9a96e;
@@ -29,8 +48,85 @@
   --accent-kraft: #8b4513;
   --accent-rose: #b76e79;
 
+  --chart-grid: #333333;
+  --chart-tick: #888888;
+  --chart-tooltip-bg: #1a1a1a;
+  --chart-tooltip-border: #333333;
+  --chart-tooltip-text: #e5e5e5;
+
+  --shadow-card: 0 0 0 1px transparent;
+
   --background: var(--bg-primary);
   --foreground: var(--text-primary);
+}
+
+html.light,
+html[data-theme="light"] {
+  color-scheme: light;
+  --gray-50: 22 20 16;
+  --gray-100: 32 28 24;
+  --gray-200: 42 38 32;
+  --gray-300: 58 52 44;
+  --gray-400: 92 84 74;
+  --gray-500: 110 102 92;
+  --gray-600: 140 130 116;
+  --gray-700: 214 205 190;
+  --gray-800: 243 237 227;
+  --gray-900: 255 252 247;
+  --gray-950: 246 241 232;
+
+  --bg-primary: #f6f1e8;
+  --bg-surface: #fffcf7;
+  --bg-elevated: #f3ede3;
+
+  --text-primary: #1a1612;
+  --text-secondary: #3f3a34;
+  --text-body: #5c544a;
+  --text-muted: #6e665c;
+
+  --border-color: #d6cdbe;
+  --border-subtle: #ebe4d8;
+
+  --btn-primary-bg: #1a3a2f;
+  --btn-primary-text: #ffffff;
+  --btn-primary-hover: #234c3e;
+  --btn-secondary-border: #1a3a2f;
+  --btn-secondary-text: #1a3a2f;
+  --btn-secondary-hover: color-mix(in srgb, #1a3a2f 8%, transparent);
+
+  --accent-forest: #1a3a2f;
+  --accent-gold: #b08a48;
+  --accent-navy: #1e3a5f;
+  --accent-silver: #6b6b6b;
+  --accent-kraft: #8b4513;
+  --accent-rose: #a45a65;
+
+  --chart-grid: #d6cdbe;
+  --chart-tick: #6e665c;
+  --chart-tooltip-bg: #fffcf7;
+  --chart-tooltip-border: #d6cdbe;
+  --chart-tooltip-text: #1a1612;
+
+  --shadow-card: 0 1px 2px rgb(26 22 18 / 0.06), 0 8px 24px rgb(26 22 18 / 0.04);
+
+  --background: var(--bg-primary);
+  --foreground: var(--text-primary);
+}
+
+/* Invoice / quotation paper always uses a print-like light palette */
+.invoice-paper {
+  --gray-50: 248 248 248;
+  --gray-100: 240 240 240;
+  --gray-200: 229 229 229;
+  --gray-300: 212 212 212;
+  --gray-400: 176 176 176;
+  --gray-500: 107 107 107;
+  --gray-600: 102 102 102;
+  --gray-700: 51 51 51;
+  --gray-800: 31 31 31;
+  --gray-900: 26 26 26;
+  --gray-950: 13 13 13;
+  color-scheme: light;
 }
 
 body {
@@ -55,7 +151,6 @@ body {
     font-family: inherit;
   }
 
-  /* Kill browser-default blue on checkboxes / radios / focus */
   input[type="checkbox"],
   input[type="radio"] {
     accent-color: var(--accent-gold);
@@ -73,7 +168,7 @@ body {
     color: var(--btn-primary-text);
   }
   .btn-primary:hover:not(:disabled) {
-    background-color: #e5e5e5;
+    background-color: var(--btn-primary-hover);
   }
 
   .btn-secondary {
@@ -83,7 +178,7 @@ body {
     background-color: transparent;
   }
   .btn-secondary:hover:not(:disabled) {
-    background-color: color-mix(in srgb, #ffffff 8%, transparent);
+    background-color: var(--btn-secondary-hover);
   }
 
   .btn-accent {
@@ -95,7 +190,6 @@ body {
     background-color: #d4b87e;
   }
 
-  /* Selected segmented control / pill (Unit, Paper type, etc.) */
   .seg-selected {
     background-color: var(--accent-gold) !important;
     color: #1a1a1a !important;
@@ -105,6 +199,6 @@ body {
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: #333333 #1a1a1a;
+    scrollbar-color: rgb(var(--gray-700)) rgb(var(--gray-900));
   }
 }

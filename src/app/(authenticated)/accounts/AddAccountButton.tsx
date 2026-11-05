@@ -124,8 +124,8 @@ export function AddAccountButton() {
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setOpen(false)} />
           <div className="relative bg-gray-900 border border-gray-700 rounded-xl w-full max-w-lg shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
-              <h2 className="text-base font-semibold text-white">Add Account</h2>
-              <button onClick={() => { setOpen(false); resetForm(); }} className="text-gray-400 hover:text-white">
+              <h2 className="text-base font-semibold text-foreground">Add Account</h2>
+              <button onClick={() => { setOpen(false); resetForm(); }} className="text-gray-400 hover:text-foreground">
                 <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
@@ -141,7 +141,7 @@ export function AddAccountButton() {
                     value={form.email}
                     onChange={handleChange}
                     placeholder="you@gmail.com"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-foreground placeholder-gray-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
                 <div>
@@ -151,7 +151,7 @@ export function AddAccountButton() {
                     value={form.displayName}
                     onChange={handleChange}
                     placeholder="John Smith"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-foreground placeholder-gray-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
                 <div>
@@ -160,7 +160,7 @@ export function AddAccountButton() {
                     name="role"
                     value={form.role}
                     onChange={handleChange}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-indigo-500"
                   >
                     <option value="NEW">NEW (needs warmup)</option>
                     <option value="OLD">OLD (trusted, aged)</option>
@@ -180,7 +180,7 @@ export function AddAccountButton() {
                     value={form.appPassword}
                     onChange={handleChange}
                     placeholder="xxxx xxxx xxxx xxxx"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-foreground placeholder-gray-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
               </div>
@@ -192,19 +192,19 @@ export function AddAccountButton() {
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-400 mb-1">IMAP Host</label>
-                    <input name="imapHost" value={form.imapHost} onChange={handleChange} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+                    <input name="imapHost" value={form.imapHost} onChange={handleChange} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-indigo-500" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-400 mb-1">IMAP Port</label>
-                    <input name="imapPort" value={form.imapPort} onChange={handleChange} type="number" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+                    <input name="imapPort" value={form.imapPort} onChange={handleChange} type="number" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-indigo-500" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-400 mb-1">SMTP Host</label>
-                    <input name="smtpHost" value={form.smtpHost} onChange={handleChange} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+                    <input name="smtpHost" value={form.smtpHost} onChange={handleChange} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-indigo-500" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-400 mb-1">SMTP Port</label>
-                    <input name="smtpPort" value={form.smtpPort} onChange={handleChange} type="number" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+                    <input name="smtpPort" value={form.smtpPort} onChange={handleChange} type="number" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-indigo-500" />
                   </div>
                 </div>
               </details>

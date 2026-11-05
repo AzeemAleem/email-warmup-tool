@@ -113,7 +113,7 @@ export function InvoicesTable({ invoices: initial }: { invoices: InvoiceRow[] })
                   )}
                 </td>
                 <td className="px-4 py-3 min-w-0">
-                  <p className="text-white font-medium truncate">{inv.clientName || "—"}</p>
+                  <p className="text-foreground font-medium truncate">{inv.clientName || "—"}</p>
                   {inv.clientEmail && (
                     <p className="text-xs text-gray-500 truncate">{inv.clientEmail}</p>
                   )}
@@ -123,7 +123,7 @@ export function InvoicesTable({ invoices: initial }: { invoices: InvoiceRow[] })
                 </td>
                 <td className="px-4 py-3 text-right tabular-nums">
                   {inv.totalAmount != null ? (
-                    <span className="text-white font-semibold">
+                    <span className="text-foreground font-semibold">
                       {fmtMoney(inv.totalAmount, inv.currency)}
                     </span>
                   ) : (
@@ -137,7 +137,7 @@ export function InvoicesTable({ invoices: initial }: { invoices: InvoiceRow[] })
                   <div className="flex items-center justify-end gap-2">
                     <Link
                       href={`/invoices/${inv.id}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-foreground transition-colors"
                     >
                       <EyeIcon className="h-3.5 w-3.5" />
                       View

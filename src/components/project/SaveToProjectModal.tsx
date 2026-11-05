@@ -95,13 +95,13 @@ export function SaveToProjectModal({
         <div className="flex items-center justify-between border-b border-gray-700 px-5 py-4">
           <div className="flex items-center gap-2">
             <BookmarkIcon className="h-4 w-4 text-pacify-gold" />
-            <h2 className="text-sm font-semibold text-white">
+            <h2 className="text-sm font-semibold text-foreground">
               {isEdit ? `Update ${typeLabel} Estimation` : `Save ${typeLabel} Calculation`}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-800 hover:text-foreground transition-colors"
           >
             <XMarkIcon className="h-4 w-4" />
           </button>
@@ -111,7 +111,7 @@ export function SaveToProjectModal({
           {saved ? (
             <div className="flex flex-col items-center gap-3 py-4 text-center">
               <CheckCircleIcon className="h-10 w-10 text-green-400" />
-              <p className="text-sm font-medium text-white">
+              <p className="text-sm font-medium text-foreground">
                 Calculation {isEdit ? "updated on" : "saved to"}{" "}
                 <span className="text-pacify-gold">{project?.projectName}</span>!
               </p>
@@ -165,7 +165,7 @@ export function SaveToProjectModal({
                   placeholder='e.g. "Initial Q1 estimate" or "Rev 2 — kraft"'
                   maxLength={200}
                   required
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
                 />
                 <p className="text-[11px] text-gray-600">
                   Required — shown as the title under the project Calculations tab.
@@ -176,7 +176,7 @@ export function SaveToProjectModal({
                 <button
                   onClick={onClose}
                   disabled={saving}
-                  className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50"
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-foreground transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>

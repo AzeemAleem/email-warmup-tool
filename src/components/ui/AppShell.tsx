@@ -36,7 +36,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         collapsed={ready ? collapsed : false}
         onToggle={toggleCollapsed}
       />
-      <main className="flex-1 min-w-0 overflow-y-auto bg-gray-950 scrollbar-thin">
+      <main className="flex-1 min-w-0 overflow-y-auto bg-background scrollbar-thin">
         <div className="p-6 lg:p-8">{children}</div>
       </main>
     </div>

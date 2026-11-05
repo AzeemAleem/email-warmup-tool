@@ -90,38 +90,38 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-white">Dashboard</h1>
+        <h1 className="text-xl font-semibold text-foreground">Dashboard</h1>
         <p className="text-sm text-gray-400 mt-1">
           Pool health and live deliverability limits (from Config)
         </p>
       </div>
 
       <Card className="border-amber-500/20 bg-amber-500/5">
-        <h2 className="text-sm font-semibold text-amber-200 mb-3">
+        <h2 className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-3">
           Live safety limits
         </h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
           <div>
             <p className="text-xs text-gray-500">Max inbound / inbox / day</p>
-            <p className="text-lg font-semibold text-white">
+            <p className="text-lg font-semibold text-foreground">
               {safety.maxInboundPerReceiverPerDay}
             </p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Max inbound / hour</p>
-            <p className="text-lg font-semibold text-white">
+            <p className="text-lg font-semibold text-foreground">
               {safety.maxInboundPerReceiverPerHour}
             </p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Min gap same inbox</p>
-            <p className="text-lg font-semibold text-white">
+            <p className="text-lg font-semibold text-foreground">
               {formatGapHours(safety.minGapBetweenInboundMs)}
             </p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Sends / 5-min tick</p>
-            <p className="text-lg font-semibold text-white">
+            <p className="text-lg font-semibold text-foreground">
               {safety.maxSendsPerTick}
               <span className="text-xs text-gray-500 font-normal">
                 {" "}

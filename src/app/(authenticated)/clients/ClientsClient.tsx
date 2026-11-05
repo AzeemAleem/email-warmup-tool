@@ -69,7 +69,7 @@ function Input({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
+      className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
     />
   );
 }
@@ -91,7 +91,7 @@ function Textarea({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
-      className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40 resize-none"
+      className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-foreground placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40 resize-none"
     />
   );
 }
@@ -111,10 +111,10 @@ function Modal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
       <div className="w-full max-w-lg rounded-xl border border-gray-700 bg-gray-900 shadow-2xl">
         <div className="flex items-center justify-between border-b border-gray-700 px-6 py-4">
-          <h2 className="text-base font-semibold text-white">{title}</h2>
+          <h2 className="text-base font-semibold text-foreground">{title}</h2>
           <button
             onClick={onClose}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-800 hover:text-foreground transition-colors"
           >
             <XMarkIcon className="h-4 w-4" />
           </button>
@@ -191,7 +191,7 @@ function ClientForm({
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50"
+          className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-foreground transition-colors disabled:opacity-50"
         >
           Cancel
         </button>
@@ -228,7 +228,7 @@ function ConfirmDelete({
       <div className="space-y-4">
         <p className="text-sm text-gray-300">
           You are about to permanently delete{" "}
-          <span className="font-semibold text-white">{clientName}</span>.
+          <span className="font-semibold text-foreground">{clientName}</span>.
           {projectCount > 0 && (
             <span className="text-red-400">
               {" "}This will also delete {projectCount} associated project{projectCount !== 1 ? "s" : ""}.
@@ -240,7 +240,7 @@ function ConfirmDelete({
           <button
             onClick={onCancel}
             disabled={deleting}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50"
+            className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-foreground transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
@@ -285,7 +285,7 @@ function ClientCard({
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-sm font-semibold text-white truncate">{client.name}</p>
+              <p className="text-sm font-semibold text-foreground truncate">{client.name}</p>
               <ClientDealBadge
                 hasWon={
                   client.hasWon ??
@@ -456,7 +456,7 @@ export function ClientsClient({ initial }: { initial: ClientRow[] }) {
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-white">Clients</h1>
+          <h1 className="text-xl font-semibold text-foreground">Clients</h1>
           <p className="text-sm text-gray-400 mt-1">
             Manage your clients and their packaging projects in one place.
           </p>
@@ -479,14 +479,14 @@ export function ClientsClient({ initial }: { initial: ClientRow[] }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name, email or phone…"
-          className="w-full rounded-lg border border-gray-700 bg-gray-800 py-2 pl-9 pr-3 text-sm text-white placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
+          className="w-full rounded-lg border border-gray-700 bg-gray-800 py-2 pl-9 pr-3 text-sm text-foreground placeholder-gray-500 focus:border-pacify-gold/60 focus:outline-none focus:ring-1 focus:ring-pacify-gold/40"
         />
       </div>
 
       {/* Grid */}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <UserIcon className="h-10 w-10 text-gray-700 mb-3" />
+          <UserIcon className="h-10 w-10 text-gray-400 mb-3" />
           <p className="text-sm font-medium text-gray-400">
             {search ? "No clients match your search." : "No clients yet."}
           </p>

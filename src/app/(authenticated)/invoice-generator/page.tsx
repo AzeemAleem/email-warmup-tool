@@ -467,7 +467,7 @@ function InvoiceGeneratorForm() {
   }
 
   const inputCls =
-    "w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-pacify-gold focus:ring-1 focus:ring-pacify-gold/30";
+    "w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-foreground placeholder-gray-500 focus:outline-none focus:border-pacify-gold focus:ring-1 focus:ring-pacify-gold/30";
 
   return (
     <div className={clsx("flex flex-col xl:flex-row gap-6", canDownload && "pb-24 xl:pb-0")}>
@@ -476,7 +476,7 @@ function InvoiceGeneratorForm() {
       <div className="flex-1 min-w-0 space-y-5 max-w-3xl">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold text-white">Invoice Generator</h1>
+            <h1 className="text-xl font-semibold text-foreground">Invoice Generator</h1>
             <p className="text-sm text-gray-400 mt-1">
               Build a quotation PDF — save it, then manage all saved quotes under{" "}
               <Link href="/invoices" className="text-pacify-gold hover:underline">
@@ -488,7 +488,7 @@ function InvoiceGeneratorForm() {
           <div className="flex items-center gap-2">
             <Link
               href="/invoices"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-gray-700 text-gray-300 hover:text-white hover:border-pacify-gold/40 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-gray-700 text-gray-300 hover:text-foreground hover:border-pacify-gold/40 transition-colors"
             >
               <FolderOpenIcon className="h-4 w-4" />
               All saved
@@ -496,7 +496,7 @@ function InvoiceGeneratorForm() {
             <button
               type="button"
               onClick={handleNew}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-gray-700 text-gray-300 hover:text-white hover:border-pacify-gold/40 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-gray-700 text-gray-300 hover:text-foreground hover:border-pacify-gold/40 transition-colors"
             >
               <DocumentPlusIcon className="h-4 w-4" />
               New quote
@@ -528,7 +528,7 @@ function InvoiceGeneratorForm() {
 
         {/* Invoice meta */}
         <Card>
-          <h2 className="text-sm font-semibold text-white mb-4">Invoice Details</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-4">Invoice Details</h2>
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
               <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">Quote No.</p>
@@ -536,18 +536,18 @@ function InvoiceGeneratorForm() {
             </div>
             <div>
               <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">Date</p>
-              <p className="text-white">{dateStr || "—"}</p>
+              <p className="text-foreground">{dateStr || "—"}</p>
             </div>
             <div>
               <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">Valid Until</p>
-              <p className="text-white">{validStr || "—"}</p>
+              <p className="text-foreground">{validStr || "—"}</p>
             </div>
           </div>
         </Card>
 
         {/* Link to project */}
         <Card>
-          <h2 className="text-sm font-semibold text-white mb-1">Link to Project</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-1">Link to Project</h2>
           <p className="text-xs text-gray-500 mb-3">
             Optionally attach this invoice to a client project so it appears in the project history.
           </p>
@@ -566,7 +566,7 @@ function InvoiceGeneratorForm() {
 
         {/* Client info */}
         <Card>
-          <h2 className="text-sm font-semibold text-white mb-4">Client Information</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-4">Client Information</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-gray-400 mb-1.5">Client Name</label>
@@ -583,7 +583,7 @@ function InvoiceGeneratorForm() {
 
         {/* Order title */}
         <Card>
-          <h2 className="text-sm font-semibold text-white mb-1.5">Order Title</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-1.5">Order Title</h2>
           <p className="text-xs text-gray-500 mb-3">Appears as the product name in the quotation table.</p>
           <input type="text" value={orderTitle} onChange={(e) => setOrderTitle(e.target.value)}
             placeholder="e.g. Premium Custom Magnetic Rigid Box" className={inputCls} />
@@ -591,7 +591,7 @@ function InvoiceGeneratorForm() {
 
         {/* Custom text bullet fields */}
         <Card>
-          <h2 className="text-sm font-semibold text-white mb-1">Custom Description Fields</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-1">Custom Description Fields</h2>
           <p className="text-xs text-gray-500 mb-4">Filled fields appear as the first bullets in the PDF.</p>
           <div className="space-y-3">
             {([
@@ -616,7 +616,7 @@ function InvoiceGeneratorForm() {
         <Card>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-sm font-semibold text-white">Product Description</h2>
+              <h2 className="text-sm font-semibold text-foreground">Product Description</h2>
               <p className="text-xs text-gray-500 mt-0.5">
                 {checked.size} item{checked.size !== 1 ? "s" : ""} selected • each becomes a bullet in the PDF
               </p>
@@ -641,7 +641,7 @@ function InvoiceGeneratorForm() {
                     className="w-full flex items-center justify-between px-4 py-3 bg-gray-800/60 hover:bg-gray-800 transition-colors text-left"
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="text-sm font-medium text-white">{group.label}</span>
+                      <span className="text-sm font-medium text-foreground">{group.label}</span>
                       {selCount > 0 && (
                         <span className="seg-selected inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold">
                           {selCount}
@@ -681,7 +681,7 @@ function InvoiceGeneratorForm() {
                             </div>
 
                             <div className="min-w-0">
-                              <p className="text-sm font-medium text-white leading-snug">{item.label}</p>
+                              <p className="text-sm font-medium text-foreground leading-snug">{item.label}</p>
                               <p className="text-xs text-gray-500 mt-0.5 leading-snug">
                                 <span className="text-pacify-gold/70 font-medium">{item.boldPrefix}</span>{" "}
                                 {item.text}
@@ -700,7 +700,7 @@ function InvoiceGeneratorForm() {
 
         {/* Pricing */}
         <Card>
-          <h2 className="text-sm font-semibold text-white mb-4">Pricing</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-4">Pricing</h2>
           <div className="space-y-4">
             {/* Currency toggle */}
             <div>
@@ -751,7 +751,7 @@ function InvoiceGeneratorForm() {
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Shipping</p>
-                    <p className="text-xl font-semibold text-white">FREE</p>
+                    <p className="text-xl font-semibold text-foreground">FREE</p>
                   </div>
                 </div>
               </div>
@@ -763,7 +763,7 @@ function InvoiceGeneratorForm() {
         <Card>
           <div className="flex items-start justify-between gap-4 mb-1">
             <div>
-              <h2 className="text-sm font-semibold text-white">Option Pricing (Page 2)</h2>
+              <h2 className="text-sm font-semibold text-foreground">Option Pricing (Page 2)</h2>
               <p className="text-xs text-gray-500 mt-0.5">
                 Optional second page — custom comparison table and/or quantity break ladder.
               </p>
@@ -773,7 +773,7 @@ function InvoiceGeneratorForm() {
               onClick={() => setIncludePage2((v) => !v)}
               className={clsx(
                 "shrink-0 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
-                includePage2 ? "seg-selected" : "bg-gray-800 text-gray-400 border border-gray-700 hover:text-white",
+                includePage2 ? "seg-selected" : "bg-gray-800 text-gray-400 border border-gray-700 hover:text-foreground",
               )}
             >
               {includePage2 ? "Enabled" : "Enable"}
@@ -894,7 +894,7 @@ function InvoiceGeneratorForm() {
                           type="button"
                           disabled={table.columns.length >= 8}
                           onClick={() => addOptColumn(table.id)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-gray-700 text-gray-300 hover:text-white hover:border-pacify-gold/40 disabled:opacity-40 transition-colors"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-gray-700 text-gray-300 hover:text-foreground hover:border-pacify-gold/40 disabled:opacity-40 transition-colors"
                         >
                           <PlusIcon className="h-3.5 w-3.5" />
                           Column
@@ -1015,10 +1015,10 @@ function InvoiceGeneratorForm() {
               {(optionTables.length > 0 || volumeTiers) && (
                 <p className="text-[11px] text-gray-500 border-t border-gray-700 pt-3">
                   PDF page 2 order:{" "}
-                  {volumeTiers && <span className="text-white">quantity ladder</span>}
+                  {volumeTiers && <span className="text-foreground">quantity ladder</span>}
                   {volumeTiers && optionTables.length > 0 && " → "}
                   {optionTables.length > 0 && (
-                    <span className="text-white">
+                    <span className="text-foreground">
                       {optionTables.length} option table{optionTables.length !== 1 ? "s" : ""}
                     </span>
                   )}
@@ -1040,7 +1040,7 @@ function InvoiceGeneratorForm() {
                 <span className="text-pacify-gold text-sm font-bold">P</span>
               </div>
               <div>
-                <p className="text-xs font-bold text-white leading-tight">Pacify Packaging</p>
+                <p className="text-xs font-bold text-foreground leading-tight">Pacify Packaging</p>
                 <p className="text-[10px] text-pacify-gold/70 uppercase tracking-wider">Quotation Preview</p>
               </div>
             </div>
@@ -1053,18 +1053,18 @@ function InvoiceGeneratorForm() {
 
               <div>
                 <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5">Bill To</p>
-                <p className="text-white font-medium truncate">{clientName || "—"}</p>
+                <p className="text-foreground font-medium truncate">{clientName || "—"}</p>
                 {clientEmail && <p className="text-gray-400 text-xs truncate">{clientEmail}</p>}
               </div>
 
               <div>
                 <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5">Order</p>
-                <p className="text-white text-xs leading-snug">{orderTitle || "—"}</p>
+                <p className="text-foreground text-xs leading-snug">{orderTitle || "—"}</p>
               </div>
 
               <div>
                 <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5">Description</p>
-                <p className="text-white">{bullets.length} bullet{bullets.length !== 1 ? "s" : ""}</p>
+                <p className="text-foreground">{bullets.length} bullet{bullets.length !== 1 ? "s" : ""}</p>
                 {bullets.length > 0 && (
                   <ul className="mt-1.5 space-y-1 max-h-32 overflow-y-auto scrollbar-thin">
                     {bullets.map((b, i) => (

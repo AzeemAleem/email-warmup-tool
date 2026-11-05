@@ -50,7 +50,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-white">Event Log</h1>
+        <h1 className="text-xl font-semibold text-foreground">Event Log</h1>
         <p className="text-sm text-gray-400 mt-1">
           {total.toLocaleString()} total warmup events
         </p>

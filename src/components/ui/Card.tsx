@@ -9,7 +9,7 @@ export function Card({ children, className }: CardProps) {
   return (
     <div
       className={clsx(
-        "rounded-xl bg-gray-900 border border-gray-700 p-5",
+        "rounded-xl bg-surface border border-gray-700 p-5 shadow-[var(--shadow-card)]",
         className,
       )}
     >
@@ -27,10 +27,10 @@ interface StatCardProps {
 }
 
 const colorMap = {
-  green: "text-emerald-400",
-  amber: "text-amber-400",
-  red: "text-red-400",
-  blue: "text-sky-400",
+  green: "text-emerald-700 dark:text-emerald-400",
+  amber: "text-amber-700 dark:text-amber-400",
+  red: "text-red-600 dark:text-red-400",
+  blue: "text-pacify-navy dark:text-sky-400",
   indigo: "text-pacify-gold",
   gold: "text-pacify-gold",
 };
@@ -49,7 +49,7 @@ export function StatCard({
       <p className={clsx("mt-1 text-3xl font-bold", colorMap[color])}>
         {value}
       </p>
-      {sub && <p className="mt-1 text-xs text-gray-500">{sub}</p>}
+      {sub && <p className="mt-1 text-xs text-muted">{sub}</p>}
     </Card>
   );
 }

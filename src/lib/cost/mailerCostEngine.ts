@@ -33,13 +33,21 @@ export interface MailerCostExtras {
 }
 
 /**
- * Total sheets for mailer boxes:
- * outside (qty) + inside (qty) + 200 extra.
- * Example: 300 units → 300 + 300 + 200 = 800 sheets.
+ * Total sheets for mailer boxes, driven by printing sides:
+ * - 2 sides: qty ≤ 200 → 600; else (qty × 2) + 200
+ * - 1 side (or 0): qty ≤ 200 → 400; else (qty × 1) + 200
+ * Example: 250 units, 2 sides → 700; 1 side → 450.
  */
-export function calcMailerTotalSheets(quantity: number): number | null {
+export function calcMailerTotalSheets(
+  quantity: number,
+  printSides: number = 2,
+): number | null {
   if (!Number.isInteger(quantity) || quantity < 1) return null;
-  return quantity * 2 + 200;
+  const sides = printSides >= 2 ? 2 : 1;
+  if (quantity <= 200) {
+    return sides === 2 ? 600 : 400;
+  }
+  return quantity * sides + 200;
 }
 
 /**
@@ -66,11 +74,14 @@ export function runMailerCostEngine(
   const warnings: string[] = [];
 
   let totalSheets =
-    extras.totalSheetsOverride ?? calcMailerTotalSheets(quantity);
+    extras.totalSheetsOverride ??
+    calcMailerTotalSheets(quantity, extras.laminationSides);
 
   if (totalSheets == null || totalSheets < 1) {
-    totalSheets = quantity * 2 + 200;
-    warnings.push("Using default sheet formula: qty×2 + 200 extra.");
+    totalSheets = calcMailerTotalSheets(quantity, extras.laminationSides) ?? 400;
+    warnings.push(
+      "Using default sheet formula from printing sides and quantity.",
+    );
   }
 
   const colors = extras.printColorMode === "cmyk" ? 4 : 1;

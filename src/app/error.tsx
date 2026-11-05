@@ -13,7 +13,7 @@ export default function Error({
 
   return (
     <div className="max-w-lg mx-auto mt-16 space-y-4 text-center">
-      <h1 className="text-xl font-semibold text-white">Page failed to load</h1>
+      <h1 className="text-xl font-semibold text-foreground">Page failed to load</h1>
       <p className="text-sm text-gray-400">
         {isDb
           ? "Cannot reach the database. On Vercel, set DATABASE_URL to the Supabase Transaction pooler (port 6543 + pgbouncer=true) and DIRECT_URL to the Session pooler (port 5432), then redeploy."

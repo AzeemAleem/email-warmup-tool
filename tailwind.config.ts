@@ -15,18 +15,19 @@ const pacifyGoldScale = {
   950: "#0F221C",
 };
 
+/** Semantic gray scale — RGB channels swap with [data-theme] so existing gray-* classes follow light/dark. */
 const pacifyGrayScale = {
-  50: "#F8F8F8",
-  100: "#F0F0F0",
-  200: "#E5E5E5",
-  300: "#E5E5E5",
-  400: "#B0B0B0",
-  500: "#6B6B6B",
-  600: "#666666",
-  700: "#333333",
-  800: "#1F1F1F",
-  900: "#1A1A1A",
-  950: "#0D0D0D",
+  50: "rgb(var(--gray-50) / <alpha-value>)",
+  100: "rgb(var(--gray-100) / <alpha-value>)",
+  200: "rgb(var(--gray-200) / <alpha-value>)",
+  300: "rgb(var(--gray-300) / <alpha-value>)",
+  400: "rgb(var(--gray-400) / <alpha-value>)",
+  500: "rgb(var(--gray-500) / <alpha-value>)",
+  600: "rgb(var(--gray-600) / <alpha-value>)",
+  700: "rgb(var(--gray-700) / <alpha-value>)",
+  800: "rgb(var(--gray-800) / <alpha-value>)",
+  900: "rgb(var(--gray-900) / <alpha-value>)",
+  950: "rgb(var(--gray-950) / <alpha-value>)",
 };
 
 const pacifySilverScale = {
@@ -63,6 +64,7 @@ const pacifyNavyScale = {
  * replace Tailwind's default indigo/blue/cyan instead of merging with them.
  */
 const config: Config = {
+  darkMode: "class",
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -78,6 +80,7 @@ const config: Config = {
       foreground: "var(--text-primary)",
       surface: "var(--bg-surface)",
       elevated: "var(--bg-elevated)",
+      muted: "var(--text-muted)",
       pacify: {
         black: "#1A1A1A",
         white: "#FFFFFF",

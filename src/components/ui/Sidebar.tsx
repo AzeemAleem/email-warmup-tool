@@ -17,6 +17,7 @@ import {
   BuildingOffice2Icon,
 } from "@heroicons/react/24/outline";
 import { clsx } from "clsx";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 type NavLeaf = {
   kind: "link";
@@ -81,7 +82,7 @@ export function Sidebar({
   return (
     <div
       className={clsx(
-        "flex h-full flex-col bg-gray-900 border-r border-gray-700 transition-[width] duration-200 ease-out shrink-0",
+        "flex h-full flex-col bg-surface border-r border-gray-700 transition-[width] duration-200 ease-out shrink-0",
         collapsed ? "w-[4.25rem]" : "w-64",
       )}
     >
@@ -99,7 +100,7 @@ export function Sidebar({
               </span>
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-white truncate leading-tight">
+              <p className="text-sm font-semibold text-foreground truncate leading-tight">
                 Pacify
               </p>
               <p className="text-[10px] text-pacify-gold/80 uppercase tracking-[0.12em] truncate">
@@ -153,8 +154,8 @@ export function Sidebar({
                   "flex items-center rounded-md text-sm font-medium transition-colors",
                   collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2",
                   isActive
-                    ? "bg-pacify-forest/50 text-pacify-gold border border-pacify-gold/30"
-                    : "text-gray-400 hover:bg-gray-800 hover:text-gray-200 border border-transparent",
+                    ? "bg-pacify-gold/15 text-pacify-forest border border-pacify-gold/40 dark:bg-pacify-forest/50 dark:text-pacify-gold dark:border-pacify-gold/30"
+                    : "text-gray-400 hover:bg-gray-800 hover:text-foreground border border-transparent",
                 )}
               >
                 <item.icon className="h-4 w-4 flex-shrink-0" />
@@ -178,10 +179,10 @@ export function Sidebar({
                   "flex items-center rounded-md text-sm font-medium transition-colors",
                   collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2",
                   parentActive && !childActive
-                    ? "bg-pacify-forest/50 text-pacify-gold border border-pacify-gold/30"
+                    ? "bg-pacify-gold/15 text-pacify-forest border border-pacify-gold/40 dark:bg-pacify-forest/50 dark:text-pacify-gold dark:border-pacify-gold/30"
                     : parentActive || childActive
-                      ? "text-pacify-gold/90 hover:bg-gray-800 border border-transparent"
-                      : "text-gray-400 hover:bg-gray-800 hover:text-gray-200 border border-transparent",
+                      ? "text-pacify-forest dark:text-pacify-gold/90 hover:bg-gray-800 border border-transparent"
+                      : "text-gray-400 hover:bg-gray-800 hover:text-foreground border border-transparent",
                 )}
               >
                 <item.icon className="h-4 w-4 flex-shrink-0" />
@@ -198,8 +199,8 @@ export function Sidebar({
                       className={clsx(
                         "flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-colors ml-3 pl-3 py-1.5 border-l border-gray-700",
                         isChildActive
-                          ? "text-pacify-gold bg-pacify-forest/40 border-l-pacify-gold/50"
-                          : "text-gray-500 hover:text-gray-200 hover:bg-gray-800/80",
+                          ? "text-pacify-forest bg-pacify-gold/15 border-l-pacify-gold dark:text-pacify-gold dark:bg-pacify-forest/40 dark:border-l-pacify-gold/50"
+                          : "text-gray-500 hover:text-foreground hover:bg-gray-800/80",
                       )}
                     >
                       <child.icon className="h-3.5 w-3.5 flex-shrink-0" />
@@ -220,8 +221,8 @@ export function Sidebar({
                       className={clsx(
                         "flex items-center justify-center rounded-md px-2 py-2 transition-colors border",
                         isChildActive
-                          ? "bg-pacify-forest/50 text-pacify-gold border-pacify-gold/30"
-                          : "text-gray-500 hover:bg-gray-800 hover:text-gray-200 border-transparent",
+                          ? "bg-pacify-gold/15 text-pacify-forest border-pacify-gold/40 dark:bg-pacify-forest/50 dark:text-pacify-gold dark:border-pacify-gold/30"
+                          : "text-gray-500 hover:bg-gray-800 hover:text-foreground border-transparent",
                       )}
                     >
                       <child.icon className="h-4 w-4" />
@@ -235,16 +236,17 @@ export function Sidebar({
 
       <div
         className={clsx(
-          "py-4 border-t border-gray-700",
+          "py-4 border-t border-gray-700 space-y-1",
           collapsed ? "px-2" : "px-3",
         )}
       >
+        <ThemeToggle collapsed={collapsed} />
         <form action="/api/auth/logout" method="POST">
           <button
             type="submit"
             title={collapsed ? "Sign out" : undefined}
             className={clsx(
-              "flex w-full items-center rounded-md text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-gray-200 transition-colors",
+              "flex w-full items-center rounded-md text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-foreground transition-colors",
               collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2",
             )}
           >

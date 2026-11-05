@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { format, subDays, startOfDay } from "date-fns";
 import { Card } from "@/components/ui/Card";
+import { useTheme } from "@/components/theme/ThemeProvider";
 
 interface EventPoint {
   scheduledFor: Date;
@@ -31,6 +32,15 @@ interface WarmupChartProps {
 }
 
 export function WarmupChart({ events }: WarmupChartProps) {
+  const { theme } = useTheme();
+  const isLight = theme === "light";
+  const grid = isLight ? "#D6CDBE" : "#333333";
+  const tick = isLight ? "#6E665C" : "#888888";
+  const tooltipBg = isLight ? "#FFFCF7" : "#1A1A1A";
+  const tooltipBorder = isLight ? "#D6CDBE" : "#333333";
+  const tooltipText = isLight ? "#1A1612" : "#E5E5E5";
+  const replied = isLight ? "#1A3A2F" : "#7AAD96";
+
   // Build 14-day aggregation
   const now = new Date();
   const days: ChartDataPoint[] = [];
@@ -57,38 +67,38 @@ export function WarmupChart({ events }: WarmupChartProps) {
 
   return (
     <Card>
-      <h2 className="text-sm font-semibold text-white mb-4">
+      <h2 className="text-sm font-semibold text-foreground mb-4">
         Activity — Last 14 Days
       </h2>
       <ResponsiveContainer width="100%" height={240}>
         <LineChart data={days} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#333333" />
+          <CartesianGrid strokeDasharray="3 3" stroke={grid} />
           <XAxis
             dataKey="date"
-            tick={{ fill: "#666666", fontSize: 11 }}
+            tick={{ fill: tick, fontSize: 11 }}
             tickLine={false}
-            axisLine={{ stroke: "#333333" }}
+            axisLine={{ stroke: grid }}
           />
           <YAxis
-            tick={{ fill: "#666666", fontSize: 11 }}
+            tick={{ fill: tick, fontSize: 11 }}
             tickLine={false}
-            axisLine={{ stroke: "#333333" }}
+            axisLine={{ stroke: grid }}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#1A1A1A",
-              border: "1px solid #333333",
+              backgroundColor: tooltipBg,
+              border: `1px solid ${tooltipBorder}`,
               borderRadius: "8px",
-              color: "#E5E5E5",
+              color: tooltipText,
               fontSize: "12px",
             }}
           />
           <Legend
-            wrapperStyle={{ fontSize: "12px", color: "#B0B0B0" }}
+            wrapperStyle={{ fontSize: "12px", color: tick }}
           />
           <Line type="monotone" dataKey="sent" stroke="#C9A96E" strokeWidth={2} dot={false} name="Sent" />
-          <Line type="monotone" dataKey="opened" stroke="#C0C0C0" strokeWidth={2} dot={false} name="Opened" />
-          <Line type="monotone" dataKey="replied" stroke="#1A3A2F" strokeWidth={2} dot={false} name="Replied" />
+          <Line type="monotone" dataKey="opened" stroke="#8F8F8F" strokeWidth={2} dot={false} name="Opened" />
+          <Line type="monotone" dataKey="replied" stroke={replied} strokeWidth={2} dot={false} name="Replied" />
           <Line type="monotone" dataKey="rescued" stroke="#B76E79" strokeWidth={2} dot={false} name="Rescued" />
         </LineChart>
       </ResponsiveContainer>

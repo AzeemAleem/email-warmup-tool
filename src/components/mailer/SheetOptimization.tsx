@@ -83,7 +83,7 @@ function SheetSizeLabel({
       : `${formatLength(convertLength(width, "in", unit), unit)}×${formatLength(convertLength(height, "in", unit), unit)} ${unit}`;
   return (
     <span>
-      <span className="text-white font-medium tabular-nums">
+      <span className="text-foreground font-medium tabular-nums">
         {width}×{height} in
       </span>
       {converted && (
@@ -206,7 +206,7 @@ function SheetTable({
       <h3
         className={clsx(
           "text-sm font-semibold mb-1",
-          secondary ? "text-gray-400" : "text-white",
+          secondary ? "text-gray-400" : "text-foreground",
         )}
       >
         {title}
@@ -301,7 +301,7 @@ function SheetTable({
                         </span>
                       )}
                       {isCostActive && (
-                        <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-600 text-white">
+                        <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-600 text-foreground">
                           In use
                         </span>
                       )}
@@ -315,7 +315,7 @@ function SheetTable({
                   <td
                     className={clsx(
                       "px-3 py-2.5 text-right font-semibold tabular-nums",
-                      r.fits ? "text-white text-base" : "text-red-400",
+                      r.fits ? "text-foreground text-base" : "text-red-400",
                     )}
                   >
                     {r.pieces}
@@ -442,7 +442,7 @@ export function SheetOptimization({
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-white">Sheet Optimization</h2>
+          <h2 className="text-sm font-semibold text-foreground">Sheet Optimization</h2>
           <p className="text-xs text-gray-500 mt-0.5">
             {nestingSizeLabel}:{" "}
             <span className="text-gray-300 font-medium tabular-nums">
@@ -519,7 +519,7 @@ export function SheetOptimization({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xl font-bold text-white tabular-nums">
+                <span className="text-xl font-bold text-foreground tabular-nums">
                   {recommendation.recommended.sheet.width}×
                   {recommendation.recommended.sheet.height} in
                 </span>
@@ -530,7 +530,7 @@ export function SheetOptimization({
                   Best
                 </span>
                 {costSelectionEnabled && !usingManualCostSheet && (
-                  <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-600 text-white">
+                  <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-600 text-foreground">
                     In use
                   </span>
                 )}

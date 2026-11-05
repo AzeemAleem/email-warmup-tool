@@ -26,7 +26,7 @@ export default async function SavedInvoicesPage() {
     <div className="space-y-6 max-w-5xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Saved Invoices</h1>
+          <h1 className="text-xl font-semibold text-foreground">Saved Invoices</h1>
           <p className="text-sm text-gray-400 mt-1">
             All quotations saved to the database. Click Edit to open and update one.
           </p>

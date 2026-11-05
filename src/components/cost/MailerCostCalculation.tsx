@@ -11,7 +11,7 @@ import type { MailerCostConfig } from "@/lib/cost/mailerCostConfig";
 import type { CostEngineResult, CostLineResult } from "@/lib/cost/types";
 
 const inputCls =
-  "w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30";
+  "w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-foreground placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30";
 
 export interface MailerOverrideControls {
   override: boolean;
@@ -25,7 +25,9 @@ interface Props {
   quantity: number;
   config: MailerCostConfig;
   onConfigChange: (config: MailerCostConfig) => void;
-  autoTotalSheets: number;
+  autoTotalSheets: number | null;
+  /** Printing / lamination sides (0–2); drives auto sheet formula help text */
+  laminationSides: number;
   totalSheetsOverride: boolean;
   totalSheetsManualRaw: string;
   onTotalSheetsOverrideChange: (v: boolean) => void;
@@ -192,6 +194,7 @@ export function MailerCostCalculation({
   config,
   onConfigChange,
   autoTotalSheets,
+  laminationSides,
   totalSheetsOverride,
   totalSheetsManualRaw,
   onTotalSheetsOverrideChange,
@@ -222,7 +225,7 @@ export function MailerCostCalculation({
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-white">Production Cost</h2>
+          <h2 className="text-sm font-semibold text-foreground">Production Cost</h2>
           <p className="text-xs text-gray-500 mt-1">
             Each section shows calculated details. Click Override to enter a
             custom total without leaving the section.
@@ -257,7 +260,7 @@ export function MailerCostCalculation({
             <h3 className="text-sm font-semibold text-pacify-silver">
               Stock Cost
             </h3>
-            <span className="text-sm font-bold text-white tabular-nums">
+            <span className="text-sm font-bold text-foreground tabular-nums">
               {formatPkrTotal(stockItem.total)}
             </span>
           </div>
@@ -337,8 +340,10 @@ export function MailerCostCalculation({
             />
             <p className="mt-1 text-[10px] text-gray-600">
               {totalSheetsOverride
-                ? `Auto would be ${autoTotalSheets.toLocaleString("en-US")}`
-                : `Default: outside + inside + 200 extra (qty×2 + 200)`}
+                ? `Auto would be ${(autoTotalSheets ?? 0).toLocaleString("en-US")}`
+                : laminationSides >= 2
+                  ? "2 sides: ≤200 units → 600 · else (qty×2)+200"
+                  : "1 side: ≤200 units → 400 · else qty+200"}
             </p>
           </div>
 
@@ -365,7 +370,7 @@ export function MailerCostCalculation({
         <Card className="border-sky-500/20 bg-sky-500/5">
           <div className="flex items-start justify-between gap-3 mb-3">
             <h3 className="text-sm font-semibold text-sky-200">Lamination</h3>
-            <span className="text-sm font-bold text-white tabular-nums">
+            <span className="text-sm font-bold text-foreground tabular-nums">
               {formatPkrTotal(laminationItem.total)}
             </span>
           </div>
@@ -418,7 +423,7 @@ export function MailerCostCalculation({
         <Card className="border-fuchsia-500/20 bg-fuchsia-500/5">
           <div className="flex items-start justify-between gap-3 mb-3">
             <h3 className="text-sm font-semibold text-fuchsia-200">Plates</h3>
-            <span className="text-sm font-bold text-white tabular-nums">
+            <span className="text-sm font-bold text-foreground tabular-nums">
               {formatPkrTotal(platesItem.total)}
             </span>
           </div>
@@ -479,7 +484,7 @@ export function MailerCostCalculation({
             <h3 className="text-sm font-semibold text-pacify-silver">
               Printing
             </h3>
-            <span className="text-sm font-bold text-white tabular-nums">
+            <span className="text-sm font-bold text-foreground tabular-nums">
               {formatPkrTotal(printingItem.total)}
             </span>
           </div>
@@ -541,8 +546,8 @@ export function MailerCostCalculation({
       {dieItem && (
         <Card className="border-amber-500/20 bg-amber-500/5">
           <div className="flex items-start justify-between gap-3 mb-3">
-            <h3 className="text-sm font-semibold text-amber-200">Die</h3>
-            <span className="text-sm font-bold text-white tabular-nums">
+            <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200">Die</h3>
+            <span className="text-sm font-bold text-foreground tabular-nums">
               {formatPkrTotal(dieItem.total)}
             </span>
           </div>
@@ -603,7 +608,7 @@ export function MailerCostCalculation({
         <Card className="border-orange-500/20 bg-orange-500/5">
           <div className="flex items-start justify-between gap-3 mb-3">
             <h3 className="text-sm font-semibold text-orange-200">Cutting</h3>
-            <span className="text-sm font-bold text-white tabular-nums">
+            <span className="text-sm font-bold text-foreground tabular-nums">
               {formatPkrTotal(cuttingItem.total)}
             </span>
           </div>
@@ -664,7 +669,7 @@ export function MailerCostCalculation({
         <Card className="border-lime-500/20 bg-lime-500/5">
           <div className="flex items-start justify-between gap-3 mb-3">
             <h3 className="text-sm font-semibold text-lime-200">Pasting</h3>
-            <span className="text-sm font-bold text-white tabular-nums">
+            <span className="text-sm font-bold text-foreground tabular-nums">
               {formatPkrTotal(pastingItem.total)}
             </span>
           </div>
@@ -727,7 +732,7 @@ export function MailerCostCalculation({
             <h3 className="text-sm font-semibold text-emerald-200">
               Corrugation
             </h3>
-            <span className="text-sm font-bold text-white tabular-nums">
+            <span className="text-sm font-bold text-foreground tabular-nums">
               {formatPkrTotal(corrugationItem.total)}
             </span>
           </div>
@@ -788,7 +793,7 @@ export function MailerCostCalculation({
         <Card className="border-indigo-500/20 bg-indigo-500/5">
           <div className="flex items-start justify-between gap-3 mb-3">
             <h3 className="text-sm font-semibold text-indigo-200">Shipping</h3>
-            <span className="text-sm font-bold text-white tabular-nums">
+            <span className="text-sm font-bold text-foreground tabular-nums">
               {formatPkrTotal(shippingItem.total)}
             </span>
           </div>
@@ -870,8 +875,8 @@ export function MailerCostCalculation({
       {extraItem && (
         <Card className="border-amber-500/20 bg-amber-500/5">
           <div className="flex items-start justify-between gap-3 mb-3">
-            <h3 className="text-sm font-semibold text-amber-200">Extra</h3>
-            <span className="text-sm font-bold text-white tabular-nums">
+            <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200">Extra</h3>
+            <span className="text-sm font-bold text-foreground tabular-nums">
               {formatPkrTotal(extraItem.total)}
             </span>
           </div>

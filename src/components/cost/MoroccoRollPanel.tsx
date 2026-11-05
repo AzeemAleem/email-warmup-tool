@@ -36,7 +36,7 @@ export function MoroccoRollPanel({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-sm font-semibold text-white">Morocco Paper</h2>
+        <h2 className="text-sm font-semibold text-foreground">Morocco Paper</h2>
         <p className="text-xs text-gray-500 mt-0.5">
           Required piece size:{" "}
           <span className="text-gray-300 font-medium tabular-nums">
@@ -64,19 +64,19 @@ export function MoroccoRollPanel({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             <div>
               <p className="text-gray-600">Orientation</p>
-              <p className="text-white font-semibold mt-0.5">
+              <p className="text-foreground font-semibold mt-0.5">
                 {orientation.label}
               </p>
             </div>
             <div>
               <p className="text-gray-600">Pieces across</p>
-              <p className="text-white font-semibold mt-0.5 tabular-nums">
+              <p className="text-foreground font-semibold mt-0.5 tabular-nums">
                 {orientation.piecesAcross}
               </p>
             </div>
             <div>
               <p className="text-gray-600">Roll length / piece</p>
-              <p className="text-white font-semibold mt-0.5 tabular-nums">
+              <p className="text-foreground font-semibold mt-0.5 tabular-nums">
                 {orientation.rollLengthPerPiece.toLocaleString("en-US", {
                   maximumFractionDigits: 4,
                 })}{" "}
@@ -85,7 +85,7 @@ export function MoroccoRollPanel({
             </div>
             <div>
               <p className="text-gray-600">Cost / unit</p>
-              <p className="text-white font-semibold mt-0.5 tabular-nums">
+              <p className="text-foreground font-semibold mt-0.5 tabular-nums">
                 {costResult && !isMoroccoError(costResult)
                   ? formatPkr(costResult.perUnit)
                   : "—"}
@@ -95,7 +95,7 @@ export function MoroccoRollPanel({
               <>
                 <div>
                   <p className="text-gray-600">Total roll length</p>
-                  <p className="text-white font-semibold mt-0.5 tabular-nums">
+                  <p className="text-foreground font-semibold mt-0.5 tabular-nums">
                     {costResult.totalRollLengthIn.toLocaleString("en-US", {
                       maximumFractionDigits: 1,
                     })}{" "}

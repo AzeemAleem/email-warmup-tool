@@ -87,7 +87,7 @@ export function CostTotalsSummary({
   return (
     <Card
       className={clsx(
-        "border-pacify-gold/30 bg-pacify-forest/30",
+        "border-pacify-gold/30 bg-pacify-gold/10 dark:bg-pacify-forest/30",
         className,
       )}
     >
@@ -95,13 +95,13 @@ export function CostTotalsSummary({
         <div className="space-y-1.5 pb-3 border-b border-pacify-gold/20">
           <div className="flex items-baseline justify-between gap-2">
             <p className="text-xs font-medium text-gray-400">Production cost</p>
-            <p className="text-sm font-semibold text-white tabular-nums">
+            <p className="text-sm font-semibold text-foreground tabular-nums">
               {formatPkrTotal(t.productionPkr)}
             </p>
           </div>
           <div className="flex items-baseline justify-between gap-2">
             <p className="text-xs font-medium text-gray-400">Shipping cost</p>
-            <p className="text-sm font-semibold text-white tabular-nums">
+            <p className="text-sm font-semibold text-foreground tabular-nums">
               {formatPkrTotal(t.shippingPkr)}
             </p>
           </div>
@@ -121,7 +121,7 @@ export function CostTotalsSummary({
           </p>
           <p
             className={clsx(
-              "mt-1 font-bold text-white tabular-nums",
+              "mt-1 font-bold text-foreground tabular-nums",
               compact ? "text-lg" : "text-2xl",
             )}
           >
@@ -134,7 +134,7 @@ export function CostTotalsSummary({
           <p className="text-sm text-gray-300 tabular-nums">
             Base: {formatPkr(t.perUnitWithoutPkr)}
           </p>
-          <p className="text-sm text-white tabular-nums">
+          <p className="text-sm text-foreground tabular-nums">
             Selling: {formatPkr(t.perUnitWithPkr)}
           </p>
           <p className="text-[11px] text-gray-600 mt-1">
@@ -160,7 +160,7 @@ export function CostTotalsSummary({
                 ? formatUsd(t.withoutProfitUsd)
                 : "—"}
             </p>
-            <p className="text-sm font-semibold text-white tabular-nums mt-0.5">
+            <p className="text-sm font-semibold text-foreground tabular-nums mt-0.5">
               Selling:{" "}
               {t.withProfitUsd != null ? formatUsd(t.withProfitUsd) : "—"}
             </p>
@@ -175,7 +175,7 @@ export function CostTotalsSummary({
                 ? formatUsd(t.perUnitWithoutUsd)
                 : "—"}
             </p>
-            <p className="text-sm font-semibold text-white tabular-nums mt-0.5">
+            <p className="text-sm font-semibold text-foreground tabular-nums mt-0.5">
               Selling:{" "}
               {t.perUnitWithUsd != null ? formatUsd(t.perUnitWithUsd) : "—"}
             </p>
@@ -201,13 +201,13 @@ export function CostTotalsStickyBar({
   const t = useCostTotals(result, quantity, profitRatio, usdRate);
 
   return (
-    <div className="xl:hidden fixed bottom-0 inset-x-0 z-30 border-t border-pacify-gold/30 bg-gray-950/95 backdrop-blur-md px-4 py-3">
+    <div className="xl:hidden fixed bottom-0 inset-x-0 z-30 border-t border-pacify-gold/30 bg-background/95 backdrop-blur-md px-4 py-3">
       <div className="flex items-end justify-between gap-3 max-w-4xl mx-auto">
         <div className="min-w-0">
           <p className="text-[10px] uppercase tracking-wide text-pacify-gold/80">
             Selling (×{t.ratio})
           </p>
-          <p className="text-base font-bold text-white tabular-nums truncate">
+          <p className="text-base font-bold text-foreground tabular-nums truncate">
             {formatPkrTotal(t.withProfitPkr)}
           </p>
           <p className="text-xs text-gray-400 tabular-nums">
@@ -223,7 +223,7 @@ export function CostTotalsStickyBar({
         </div>
         <div className="text-right shrink-0">
           <p className="text-[10px] text-gray-500">/ unit sell</p>
-          <p className="text-sm font-semibold text-white tabular-nums">
+          <p className="text-sm font-semibold text-foreground tabular-nums">
             {formatPkr(t.perUnitWithPkr)}
           </p>
         </div>

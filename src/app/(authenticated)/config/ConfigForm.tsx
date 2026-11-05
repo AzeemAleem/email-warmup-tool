@@ -77,7 +77,7 @@ export function ConfigForm({ config }: ConfigFormProps) {
   }
 
   const inputClass =
-    "w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500";
+    "w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-indigo-500";
   const labelClass = "block text-xs font-medium text-gray-400 mb-1";
   const hintClass = "text-xs text-gray-500 mt-1";
 
@@ -196,7 +196,7 @@ export function ConfigForm({ config }: ConfigFormProps) {
       </Card>
 
       <Card>
-        <h3 className="text-sm font-semibold text-white mb-4">
+        <h3 className="text-sm font-semibold text-foreground mb-4">
           Ramp-up (send targets — still capped by safety above)
         </h3>
         <div className="grid grid-cols-2 gap-4">
@@ -246,7 +246,7 @@ export function ConfigForm({ config }: ConfigFormProps) {
       </Card>
 
       <Card>
-        <h3 className="text-sm font-semibold text-white mb-4">
+        <h3 className="text-sm font-semibold text-foreground mb-4">
           Timing & delays (same sender)
         </h3>
         <div className="grid grid-cols-2 gap-4">
@@ -331,7 +331,7 @@ export function ConfigForm({ config }: ConfigFormProps) {
       </Card>
 
       <Card>
-        <h3 className="text-sm font-semibold text-white mb-4">Behavior</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-4">Behavior</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Reply probability (0–1)</label>
