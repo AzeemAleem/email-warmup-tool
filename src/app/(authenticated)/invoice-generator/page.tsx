@@ -555,7 +555,10 @@ function InvoiceGeneratorForm() {
             value={linkedProject}
             onChange={(sel) => {
               setLinkedProject(sel);
-              if (sel && !clientName.trim()) setClientName(sel.clientName);
+              if (sel) {
+                setClientName(sel.clientName);
+                setClientEmail(sel.clientEmail?.trim() || "");
+              }
             }}
             placeholder="Search and select a project (optional)…"
           />

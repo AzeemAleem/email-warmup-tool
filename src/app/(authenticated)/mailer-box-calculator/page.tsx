@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ClipboardDocumentIcon,
   ArrowPathIcon,
@@ -38,8 +39,18 @@ import {
 } from "@/lib/cost/mailerCostEngine";
 import { parseExtraTotal } from "@/lib/cost/items/extraCost";
 import { downloadMailerCostImage } from "@/lib/cost/exportCostImage";
-import { SaveToProjectModal } from "@/components/project/SaveToProjectModal";
+import {
+  SaveToProjectModal,
+  type EditCalculationMeta,
+} from "@/components/project/SaveToProjectModal";
 import { buildCalculationCore } from "@/lib/cost/calculationSnapshot";
+import {
+  editMetaFromSaved,
+  snapBool,
+  snapNum,
+  snapStr,
+  type SavedCalculationResponse,
+} from "@/lib/cost/savedCalculation";
 import { parseQuantity, quantityError } from "@/lib/cost/costEngine";
 import { recommendSheet } from "@/lib/sheetNesting";
 import { ALL_SHEETS, sheetKey } from "@/lib/sheetSizes";
@@ -79,6 +90,22 @@ function formatForInput(value: number, unit: LengthUnit): string {
 }
 
 export default function MailerBoxCalculatorPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="text-sm text-gray-400 py-8">Loading calculator…</div>
+      }
+    >
+      <MailerBoxCalculatorForm />
+    </Suspense>
+  );
+}
+
+function MailerBoxCalculatorForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const editCalcId = searchParams.get("calc");
+
   const [unit, setUnit] = useState<LengthUnit>("in");
   const [length, setLength] = useState("");
   const [width, setWidth] = useState("");
@@ -118,7 +145,8 @@ export default function MailerBoxCalculatorPage() {
     ...DEFAULT_MAILER_COST_CONFIG,
   }));
   const [materialType, setMaterialType] = useState<MailerMaterialType>("cardboard");
-  const [laminationSides, setLaminationSides] = useState(1);
+  /** Print + lamination sides (0 / 1 / 2). Default both sides. */
+  const [laminationSides, setLaminationSides] = useState(2);
   const [corrugationEnabled, setCorrugationEnabled] = useState(true);
   const [printColorMode, setPrintColorMode] = useState<"one" | "cmyk">("cmyk");
   const [totalSheetsOverride, setTotalSheetsOverride] = useState(false);
@@ -143,6 +171,99 @@ export default function MailerBoxCalculatorPage() {
   const [shippingManualRaw, setShippingManualRaw] = useState("");
   const [artSheetKeyOverride, setArtSheetKeyOverride] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [editCalculation, setEditCalculation] =
+    useState<EditCalculationMeta | null>(null);
+  const [loadingEdit, setLoadingEdit] = useState(Boolean(editCalcId));
+  const [editLoadError, setEditLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!editCalcId) {
+      setEditCalculation(null);
+      setLoadingEdit(false);
+      setEditLoadError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingEdit(true);
+    setEditLoadError(null);
+
+    fetch(`/api/calculations/${editCalcId}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Estimation not found");
+        return res.json() as Promise<SavedCalculationResponse>;
+      })
+      .then((calc) => {
+        if (cancelled) return;
+        if (calc.type === "RIGID_BOX") {
+          router.replace(`/rigid-box-calculator?calc=${encodeURIComponent(calc.id)}`);
+          return;
+        }
+
+        const snap = calc.snapshot ?? {};
+        const nextUnit =
+          snap.unit === "mm" || snap.unit === "cm" || snap.unit === "in"
+            ? snap.unit
+            : "in";
+        setUnit(nextUnit);
+        setLength(snapStr(snap.length));
+        setWidth(snapStr(snap.width));
+        setHeight(snapStr(snap.height));
+        setTouched({ length: true, width: true, height: true });
+        setQuantityRaw(snapStr(snap.quantity));
+        setQuantityTouched(true);
+        const ratio = snapNum(snap.profitRatio);
+        setProfitRatioRaw(ratio != null ? String(ratio) : "1.5");
+        setClientName(snapStr(snap.clientName));
+
+        const material =
+          snap.material === "kraft" || snap.material === "cardboard"
+            ? snap.material
+            : "cardboard";
+        setMaterialType(material);
+
+        const sides = snapNum(snap.laminationSides);
+        setLaminationSides(
+          sides != null ? Math.max(0, Math.min(2, Math.round(sides))) : 2,
+        );
+        setCorrugationEnabled(snapBool(snap.corrugationEnabled, true));
+        setPrintColorMode(snap.printColorMode === "one" ? "one" : "cmyk");
+
+        const stockGsm = snapNum(snap.stockGsm);
+        const shippingGsm = snapNum(snap.shippingGsm);
+        const shippingRate = snapNum(snap.shippingRatePerKg);
+        const usdRate = snapNum(snap.usdRate);
+        setMailerCostConfig((prev) => ({
+          ...prev,
+          stock: {
+            ...prev.stock,
+            materialType: material,
+            ...(stockGsm != null ? { gsm: stockGsm } : {}),
+          },
+          shipping: {
+            ...prev.shipping,
+            ...(shippingGsm != null ? { gsm: shippingGsm } : {}),
+            ...(shippingRate != null ? { ratePerKg: shippingRate } : {}),
+          },
+          fx: {
+            ...prev.fx,
+            ...(usdRate != null ? { usdRate } : {}),
+          },
+        }));
+
+        setEditCalculation(editMetaFromSaved(calc));
+        setLoadingEdit(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setEditLoadError("Could not load this estimation for editing.");
+        setLoadingEdit(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editCalcId, router]);
 
   function switchUnit(next: LengthUnit) {
     if (next === unit) return;
@@ -392,7 +513,7 @@ export default function MailerBoxCalculatorPage() {
     setClientName("");
     setMailerCostConfig({ ...DEFAULT_MAILER_COST_CONFIG });
     setMaterialType("cardboard");
-    setLaminationSides(1);
+    setLaminationSides(2);
     setCorrugationEnabled(true);
     setPrintColorMode("cmyk");
     setTotalSheetsOverride(false);
@@ -479,6 +600,28 @@ export default function MailerBoxCalculatorPage() {
           </p>
         </div>
 
+        {loadingEdit && (
+          <p className="rounded-lg border border-gray-700 bg-gray-800/60 px-3 py-2 text-sm text-gray-400">
+            Loading saved estimation…
+          </p>
+        )}
+        {editLoadError && (
+          <p className="rounded-lg border border-red-700/60 bg-red-900/30 px-3 py-2 text-sm text-red-300">
+            {editLoadError}
+          </p>
+        )}
+        {editCalculation && !loadingEdit && (
+          <div className="rounded-lg border border-pacify-gold/30 bg-pacify-gold/5 px-3 py-2 text-sm text-pacify-gold/90">
+            Editing{" "}
+            <span className="font-medium text-pacify-gold">
+              {editCalculation.label || "saved estimate"}
+            </span>
+            {" · "}
+            {editCalculation.project.projectName}. Adjust values, then update it
+            under Save to Project.
+          </div>
+        )}
+
         {/* Closed box dimensions & Cost inputs */}
         <Card>
           <h2 className="text-sm font-semibold text-white mb-4">
@@ -546,7 +689,7 @@ export default function MailerBoxCalculatorPage() {
 
             <div>
               <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                Lamination Sides
+                Printing sides
               </label>
               <select
                 value={laminationSides}
@@ -557,7 +700,9 @@ export default function MailerBoxCalculatorPage() {
                 <option value={1}>1 Side</option>
                 <option value={2}>2 Sides</option>
               </select>
-              <p className="mt-1 text-[11px] text-gray-600">Default: 1 side</p>
+              <p className="mt-1 text-[11px] text-gray-600">
+                Applies to printing &amp; lamination · Default: 2 sides
+              </p>
             </div>
 
             <div>
@@ -1181,7 +1326,7 @@ export default function MailerBoxCalculatorPage() {
                 className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold border border-pacify-gold/40 text-pacify-gold hover:bg-pacify-gold/10 transition-colors"
               >
                 <BookmarkIcon className="h-4 w-4" />
-                Save to Project
+                {editCalculation ? "Update Project Estimate" : "Save to Project"}
               </button>
             </div>
           </aside>
@@ -1198,6 +1343,7 @@ export default function MailerBoxCalculatorPage() {
       {showSaveModal && costResult && result && (
         <SaveToProjectModal
           type="MAILER_BOX"
+          editCalculation={editCalculation}
           snapshot={{
             ...buildCalculationCore(costResult, {
               quantity: quantity!,

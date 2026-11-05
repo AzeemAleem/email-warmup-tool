@@ -16,7 +16,7 @@ export interface MailerShippingCostResult {
  * Weight (kg) = (paddedLength × paddedWidth × GSM × total units / 15500) / 100
  * Cost = weight × ratePerKg
  * Dimensions must already include +2" padding (and rounding).
- * Note: Uses different GSM (default 550) than stock calculation.
+ * Note: Uses different GSM (default 650) than stock calculation.
  */
 export function calcMailerShippingCost(
   paddedWidthIn: number,

@@ -41,7 +41,7 @@ export interface MailerPastingConfig {
 }
 
 export interface MailerShippingConfig {
-  /** GSM for weight calculation (default 550) */
+  /** GSM for weight calculation (default 650) */
   gsm: number;
   /** Rate per kg (PKR, default 3000) */
   ratePerKg: number;
@@ -71,7 +71,7 @@ export const DEFAULT_MAILER_COST_CONFIG: Readonly<MailerCostConfig> = {
   lamination: {
     rate: 4.5,
     divisor: 144,
-    defaultSides: 1,
+    defaultSides: 2,
   },
   corrugation: {
     ratePerRoll: 150,
@@ -98,7 +98,7 @@ export const DEFAULT_MAILER_COST_CONFIG: Readonly<MailerCostConfig> = {
     fixedCost: 5000,
   },
   shipping: {
-    gsm: 550,
+    gsm: 650,
     ratePerKg: 3000,
   },
   fx: {

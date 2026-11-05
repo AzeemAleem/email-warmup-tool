@@ -180,8 +180,11 @@ export function runMailerCostEngine(
     },
   });
 
-  // 4. Printing
-  const printingAuto = colors * config.printing.costPerColor;
+  // 4. Printing — costPerColor×colors is the 2-side total (e.g. CMYK 16,000).
+  // Print/lamination sides scale it: 2 → full, 1 → half, 0 → none.
+  const printSides = Math.max(0, Math.min(2, extras.laminationSides));
+  const printingBothSides = colors * config.printing.costPerColor;
+  const printingAuto = roundMoney(printingBothSides * (printSides / 2));
   const printingUsedAutomatic = extras.printingManualTotal == null;
   const printingTotal = extras.printingManualTotal ?? printingAuto;
   items.push({
@@ -192,7 +195,9 @@ export function runMailerCostEngine(
     meta: {
       colorMode: extras.printColorMode,
       colors,
+      sides: printSides,
       costPerColor: config.printing.costPerColor,
+      bothSidesTotal: printingBothSides,
       autoTotal: printingAuto,
       usedAutomatic: printingUsedAutomatic,
     },

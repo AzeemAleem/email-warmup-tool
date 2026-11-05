@@ -547,7 +547,7 @@ export async function downloadMailerCostImage(
     ],
     ["Stock GSM", String(stockGsm)],
     [
-      "Lamination",
+      "Printing sides",
       laminationSides === 0
         ? "None"
         : `${laminationSides} side${laminationSides > 1 ? "s" : ""}`,

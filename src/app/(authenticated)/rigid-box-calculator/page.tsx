@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ClipboardDocumentIcon,
   ArrowPathIcon,
@@ -27,8 +28,19 @@ import {
   runCostEngine,
 } from "@/lib/cost/costEngine";
 import { downloadRigidCostImage } from "@/lib/cost/exportCostImage";
-import { SaveToProjectModal } from "@/components/project/SaveToProjectModal";
+import {
+  SaveToProjectModal,
+  type EditCalculationMeta,
+} from "@/components/project/SaveToProjectModal";
 import { buildCalculationCore } from "@/lib/cost/calculationSnapshot";
+import {
+  editMetaFromSaved,
+  snapBool,
+  snapNum,
+  snapStr,
+  snapshotItemIds,
+  type SavedCalculationResponse,
+} from "@/lib/cost/savedCalculation";
 import { parseDebossTotal } from "@/lib/cost/items/debossCost";
 import { parseDieTotal } from "@/lib/cost/items/dieCost";
 import { parseEmbossingTotal } from "@/lib/cost/items/embossingCost";
@@ -136,6 +148,22 @@ function SegmentedToggle<T extends string>({
 }
 
 export default function RigidBoxCalculatorPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="text-sm text-gray-400 py-8">Loading calculator…</div>
+      }
+    >
+      <RigidBoxCalculatorForm />
+    </Suspense>
+  );
+}
+
+function RigidBoxCalculatorForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const editCalcId = searchParams.get("calc");
+
   const [unit, setUnit] = useState<LengthUnit>("in");
   const [length, setLength] = useState("");
   const [width, setWidth] = useState("");
@@ -182,6 +210,10 @@ export default function RigidBoxCalculatorPage() {
     null,
   );
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [editCalculation, setEditCalculation] =
+    useState<EditCalculationMeta | null>(null);
+  const [loadingEdit, setLoadingEdit] = useState(Boolean(editCalcId));
+  const [editLoadError, setEditLoadError] = useState<string | null>(null);
   const [paperType, setPaperType] = useState<PaperType>("art");
   const [printSides, setPrintSides] = useState<PrintSides>("double");
   const [printColorMode, setPrintColorMode] =
@@ -232,6 +264,97 @@ export default function RigidBoxCalculatorPage() {
   const [openOverride, setOpenOverride] = useState(false);
   const [openWidthRaw, setOpenWidthRaw] = useState("");
   const [openHeightRaw, setOpenHeightRaw] = useState("");
+
+  useEffect(() => {
+    if (!editCalcId) {
+      setEditCalculation(null);
+      setLoadingEdit(false);
+      setEditLoadError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingEdit(true);
+    setEditLoadError(null);
+
+    fetch(`/api/calculations/${editCalcId}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Estimation not found");
+        return res.json() as Promise<SavedCalculationResponse>;
+      })
+      .then((calc) => {
+        if (cancelled) return;
+        if (calc.type === "MAILER_BOX") {
+          router.replace(`/mailer-box-calculator?calc=${encodeURIComponent(calc.id)}`);
+          return;
+        }
+
+        const snap = calc.snapshot ?? {};
+        const itemIds = snapshotItemIds(snap);
+        const nextUnit =
+          snap.unit === "mm" || snap.unit === "cm" || snap.unit === "in"
+            ? snap.unit
+            : "in";
+        setUnit(nextUnit);
+        setLength(snapStr(snap.length));
+        setWidth(snapStr(snap.width));
+        setHeight(snapStr(snap.height));
+        setTouched({ length: true, width: true, height: true });
+        setQuantityRaw(snapStr(snap.quantity));
+        setQuantityTouched(true);
+        const ratio = snapNum(snap.profitRatio);
+        setProfitRatioRaw(ratio != null ? String(ratio) : "");
+        setClientName(snapStr(snap.clientName));
+
+        const nextPaper =
+          snap.paperType === "morocco" || snap.paperType === "art"
+            ? snap.paperType
+            : "art";
+        setPaperType(nextPaper);
+        setPrintSides(snap.printSides === "single" ? "single" : "double");
+        setPrintColorMode(snap.printColorMode === "one" ? "one" : "cmyk");
+
+        setLaminationEnabled(
+          snapBool(snap.laminationEnabled, itemIds.has("lamination") || !itemIds.size),
+        );
+        setSpotUvEnabled(snapBool(snap.spotUvEnabled, itemIds.has("spotUv")));
+        setDieEnabled(snapBool(snap.dieEnabled, itemIds.has("die") || !itemIds.size));
+        setPrintingEnabled(
+          snapBool(snap.printingEnabled, itemIds.has("printing") || !itemIds.size),
+        );
+        setPlatesEnabled(
+          snapBool(snap.platesEnabled, itemIds.has("plates") || !itemIds.size),
+        );
+        setFoilingEnabled(snapBool(snap.foilingEnabled, itemIds.has("foiling")));
+        setLaborEnabled(
+          snapBool(snap.laborEnabled, itemIds.has("labor") || !itemIds.size),
+        );
+        setDebossEnabled(snapBool(snap.debossEnabled, itemIds.has("deboss")));
+        setEmbossingEnabled(
+          snapBool(snap.embossingEnabled, itemIds.has("embossing")),
+        );
+
+        const usdRate = snapNum(snap.usdRate);
+        if (usdRate != null) {
+          setCostConfig((prev) => ({
+            ...prev,
+            fx: { ...prev.fx, usdRate },
+          }));
+        }
+
+        setEditCalculation(editMetaFromSaved(calc));
+        setLoadingEdit(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setEditLoadError("Could not load this estimation for editing.");
+        setLoadingEdit(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editCalcId, router]);
 
   function switchUnit(next: LengthUnit) {
     if (next === unit) return;
@@ -655,6 +778,28 @@ export default function RigidBoxCalculatorPage() {
           the best printing sheet and paper cost.
         </p>
       </div>
+
+      {loadingEdit && (
+        <p className="rounded-lg border border-gray-700 bg-gray-800/60 px-3 py-2 text-sm text-gray-400">
+          Loading saved estimation…
+        </p>
+      )}
+      {editLoadError && (
+        <p className="rounded-lg border border-red-700/60 bg-red-900/30 px-3 py-2 text-sm text-red-300">
+          {editLoadError}
+        </p>
+      )}
+      {editCalculation && !loadingEdit && (
+        <div className="rounded-lg border border-pacify-gold/30 bg-pacify-gold/5 px-3 py-2 text-sm text-pacify-gold/90">
+          Editing{" "}
+          <span className="font-medium text-pacify-gold">
+            {editCalculation.label || "saved estimate"}
+          </span>
+          {" · "}
+          {editCalculation.project.projectName}. Adjust values, then update it
+          under Save to Project.
+        </div>
+      )}
 
       <Card>
         <div className="mb-5">
@@ -1419,7 +1564,7 @@ export default function RigidBoxCalculatorPage() {
                 className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold border border-pacify-gold/40 text-pacify-gold hover:bg-pacify-gold/10 transition-colors"
               >
                 <BookmarkIcon className="h-4 w-4" />
-                Save to Project
+                {editCalculation ? "Update Project Estimate" : "Save to Project"}
               </button>
             </div>
           </aside>
@@ -1436,6 +1581,7 @@ export default function RigidBoxCalculatorPage() {
       {showSaveModal && costResult && result && (
         <SaveToProjectModal
           type="RIGID_BOX"
+          editCalculation={editCalculation}
           snapshot={{
             ...buildCalculationCore(costResult, {
               quantity: quantity!,
@@ -1452,6 +1598,15 @@ export default function RigidBoxCalculatorPage() {
             paperType,
             printSides,
             printColorMode,
+            laminationEnabled,
+            spotUvEnabled,
+            dieEnabled,
+            printingEnabled,
+            platesEnabled,
+            foilingEnabled,
+            laborEnabled,
+            debossEnabled,
+            embossingEnabled,
             clientName: clientName || null,
           }}
           onClose={() => setShowSaveModal(false)}

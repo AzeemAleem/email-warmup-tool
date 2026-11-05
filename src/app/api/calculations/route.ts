@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 const CreateCalculationSchema = z.object({
   projectId: z.string().min(1),
   type: z.enum(["MAILER_BOX", "RIGID_BOX"]),
-  label: z.string().max(200).optional().or(z.literal("")),
+  label: z.string().trim().min(1, "Estimation name is required").max(200),
   snapshot: z.record(z.unknown()),
 });
 
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       data: {
         projectId: parsed.data.projectId,
         type: parsed.data.type,
-        label: parsed.data.label?.trim() || null,
+        label: parsed.data.label.trim(),
         snapshot: parsed.data.snapshot as Prisma.InputJsonValue,
       },
     });

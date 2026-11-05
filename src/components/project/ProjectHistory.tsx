@@ -7,11 +7,13 @@ import {
   Square3Stack3DIcon,
   DocumentTextIcon,
   TrashIcon,
+  PencilSquareIcon,
   ChevronDownIcon,
   ChevronUpIcon,
 } from "@heroicons/react/24/outline";
 import { clsx } from "clsx";
 import { formatPkrTotal, formatUsd } from "@/lib/cost/currency";
+import { calculationEditHref } from "@/lib/cost/savedCalculation";
 import { ActualExpensePanel } from "@/components/project/ActualExpensePanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -106,6 +108,15 @@ function CalcRow({
   const qty = num(snap.quantity);
   const usdRate = num(snap.usdRate);
   const profitRatio = num(snap.profitRatio);
+  const length = num(snap.length);
+  const width = num(snap.width);
+  const height = num(snap.height);
+  const unit =
+    typeof snap.unit === "string" && snap.unit.trim() ? snap.unit.trim() : null;
+  const sizeLabel =
+    length != null && width != null && height != null
+      ? `${length} × ${width} × ${height}${unit ? ` ${unit}` : ""}`
+      : null;
   const items = Array.isArray(snap.items)
     ? (snap.items as SnapshotItem[])
     : [];
@@ -131,6 +142,17 @@ function CalcRow({
             {calc.label || `${typeLabel} estimate`}
           </p>
           <p className="text-xs text-gray-500">{fmt(calc.createdAt)}</p>
+          {sizeLabel && (
+            <p className="text-xs text-gray-500">
+              Size: <span className="text-gray-400">{sizeLabel}</span>
+            </p>
+          )}
+          {qty != null && (
+            <p className="text-xs text-gray-500">
+              Quantity:{" "}
+              <span className="text-gray-400">{qty.toLocaleString()}</span>
+            </p>
+          )}
         </div>
         <div className="text-right shrink-0">
           {(sellingUsd ?? baseUsd) != null ? (
@@ -172,6 +194,13 @@ function CalcRow({
             <ChevronDownIcon className="h-4 w-4" />
           )}
         </button>
+        <Link
+          href={calculationEditHref(calc.type, calc.id)}
+          title={`Edit this ${typeLabel.toLowerCase()} estimate`}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-pacify-gold/10 hover:text-pacify-gold transition-colors shrink-0"
+        >
+          <PencilSquareIcon className="h-4 w-4" />
+        </Link>
         <button
           type="button"
           onClick={handleDelete}
@@ -414,7 +443,7 @@ function CalcRow({
             )}
             {snap.laminationSides != null && (
               <span>
-                Lamination sides:{" "}
+                Printing sides:{" "}
                 <span className="text-gray-300">
                   {String(snap.laminationSides)}
                 </span>

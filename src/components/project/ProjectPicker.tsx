@@ -27,6 +27,7 @@ export interface PickerClient {
 export interface ProjectSelection {
   clientId: string;
   clientName: string;
+  clientEmail: string | null;
   projectId: string;
   projectName: string;
 }
@@ -103,6 +104,7 @@ export function ProjectPicker({
     onChange({
       clientId: client.id,
       clientName: client.name,
+      clientEmail: client.email ?? null,
       projectId: project.id,
       projectName: project.name,
     });

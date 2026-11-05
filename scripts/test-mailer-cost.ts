@@ -141,14 +141,14 @@ assertClose(
   "Total corrugation + pasting",
 );
 
-// Test 5: Shipping cost (uses padded rounded size + GSM 550)
+// Test 5: Shipping cost (uses padded rounded size + GSM 650)
 console.log("\nTest 5: Shipping cost calculation");
 const shippingConfig = { ...DEFAULT_MAILER_COST_CONFIG.shipping };
-assert(shippingConfig.gsm === 550, "Default shipping GSM is 550");
+assert(shippingConfig.gsm === 650, "Default shipping GSM is 650");
 const shipResult = calcMailerShippingCost(27, 29, 400, shippingConfig);
 assert(shipResult !== null, "Shipping calculation should succeed");
-// Weight = (27 × 29 × 550 × 400 / 15500) / 100
-const expectedWeight = ((27 * 29 * 550 * 400) / 15500) / 100;
+// Weight = (27 × 29 × 650 × 400 / 15500) / 100
+const expectedWeight = ((27 * 29 * 650 * 400) / 15500) / 100;
 assertClose(shipResult!.totalWeightKg, expectedWeight, 0.01, "Shipping weight");
 // Cost = weight × 3000
 const expectedShipCost = expectedWeight * 3000;
@@ -285,6 +285,54 @@ const noCorrResult = runMailerCostEngine(24.5118, 27, 500, 4, DEFAULT_MAILER_COS
 assert(
   noCorrResult?.items.find((i) => i.id === "corrugation") === undefined,
   "No corrugation item when disabled",
+);
+
+// Test 10: Printing sides scale CMYK total (2 sides = 16000, 1 side = 8000)
+console.log("\nTest 10: Printing sides scaling");
+const extrasBase = {
+  totalSheetsOverride: null,
+  stockManualTotal: null,
+  laminationManualTotal: null,
+  platesManualTotal: null,
+  printingManualTotal: null,
+  dieManualTotal: null,
+  cuttingManualTotal: null,
+  pastingManualTotal: null,
+  corrugationManualTotal: null,
+  shippingManualTotal: null,
+  extraTotal: null,
+  corrugationEnabled: false,
+  printColorMode: "cmyk" as const,
+};
+const print2 = runMailerCostEngine(24.5118, 27, 500, 4, DEFAULT_MAILER_COST_CONFIG, {
+  ...extrasBase,
+  laminationSides: 2,
+});
+const print1 = runMailerCostEngine(24.5118, 27, 500, 4, DEFAULT_MAILER_COST_CONFIG, {
+  ...extrasBase,
+  laminationSides: 1,
+});
+const print0 = runMailerCostEngine(24.5118, 27, 500, 4, DEFAULT_MAILER_COST_CONFIG, {
+  ...extrasBase,
+  laminationSides: 0,
+});
+assertClose(
+  print2!.items.find((i) => i.id === "printing")!.total,
+  16000,
+  0.01,
+  "2-side printing = 16000",
+);
+assertClose(
+  print1!.items.find((i) => i.id === "printing")!.total,
+  8000,
+  0.01,
+  "1-side printing = 8000",
+);
+assertClose(
+  print0!.items.find((i) => i.id === "printing")!.total,
+  0,
+  0.01,
+  "0-side printing = 0",
 );
 
 console.log("\n✅ All mailer cost calculation tests passed!");
