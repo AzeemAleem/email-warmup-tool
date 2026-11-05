@@ -1,14 +1,17 @@
-import { prisma } from "@/lib/db";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Card } from "@/components/ui/Card";
 
-export async function PoolHealth() {
-  const accounts = await prisma.account.findMany({
-    where: { status: { not: "REMOVED" } },
-    orderBy: [{ role: "asc" }, { status: "asc" }],
-    take: 20,
-  });
+export type PoolAccountRow = {
+  id: string;
+  email: string;
+  role: string;
+  status: string;
+  trustWeight: number;
+  dailyTargetVolume: number;
+  sentToday: number;
+};
 
+export function PoolHealth({ accounts }: { accounts: PoolAccountRow[] }) {
   return (
     <Card>
       <h2 className="text-sm font-semibold text-foreground mb-4">Pool Health</h2>
@@ -27,7 +30,9 @@ export async function PoolHealth() {
           <tbody className="divide-y divide-gray-800/50">
             {accounts.map((acc) => (
               <tr key={acc.id} className="hover:bg-gray-800/30 transition-colors">
-                <td className="py-2 pr-4 text-gray-300 font-mono text-xs">{acc.email}</td>
+                <td className="py-2 pr-4 text-gray-300 font-mono text-xs">
+                  {acc.email}
+                </td>
                 <td className="py-2 pr-4">
                   <span
                     className={`text-xs font-medium ${
@@ -45,7 +50,9 @@ export async function PoolHealth() {
                     <div className="flex-1 h-1.5 bg-gray-800 rounded-full max-w-16">
                       <div
                         className="h-full bg-indigo-500 rounded-full"
-                        style={{ width: `${(acc.trustWeight * 100).toFixed(0)}%` }}
+                        style={{
+                          width: `${(acc.trustWeight * 100).toFixed(0)}%`,
+                        }}
                       />
                     </div>
                     <span className="text-xs text-gray-500">

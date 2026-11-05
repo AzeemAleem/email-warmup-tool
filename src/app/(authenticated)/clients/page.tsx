@@ -5,12 +5,22 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Clients — Pacify" };
 
 export default async function ClientsPage() {
+  // Lean read: project count + at most one WON id for badge (no schema change)
   const clients = await prisma.client.findMany({
     orderBy: { updatedAt: "desc" },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      notes: true,
+      createdAt: true,
+      updatedAt: true,
       _count: { select: { projects: true } },
       projects: {
-        select: { id: true, dealType: true },
+        where: { dealType: "WON" },
+        select: { id: true },
+        take: 1,
       },
     },
   });
@@ -25,7 +35,7 @@ export default async function ClientsPage() {
     updatedAt: c.updatedAt.toISOString(),
     _count: c._count,
     projects: c.projects,
-    hasWon: c.projects.some((p) => p.dealType === "WON"),
+    hasWon: c.projects.length > 0,
   }));
 
   return <ClientsClient initial={serialized} />;

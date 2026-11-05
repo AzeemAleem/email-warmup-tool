@@ -5,6 +5,7 @@ const nextConfig = {
       allowedOrigins: ["localhost:3000"],
     },
     serverComponentsExternalPackages: ["imapflow", "@prisma/client", "nodemailer"],
+    optimizePackageImports: ["@heroicons/react", "date-fns", "recharts"],
   },
 };
 

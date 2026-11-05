@@ -39,7 +39,6 @@ import {
   type MailerCostEngineResult,
 } from "@/lib/cost/mailerCostEngine";
 import { parseExtraTotal } from "@/lib/cost/items/extraCost";
-import { downloadMailerCostImage } from "@/lib/cost/exportCostImage";
 import {
   SaveToProjectModal,
   type EditCalculationMeta,
@@ -1280,24 +1279,27 @@ function MailerBoxCalculatorForm() {
               if (!result || quantity == null || !costResult || L == null || W == null || H == null) {
                 return;
               }
-              void downloadMailerCostImage({
-                clientName,
-                length: L,
-                width: W,
-                height: H,
-                unit,
-                openWidthIn: result.in.openWidth,
-                openHeightIn: result.in.openHeight,
-                quantity,
-                materialType,
-                laminationSides,
-                stockGsm: mailerCostConfig.stock.gsm,
-                shippingGsm: mailerCostConfig.shipping.gsm,
-                shippingRatePerKg: mailerCostConfig.shipping.ratePerKg,
-                profitRatio: profitRatio ?? 1,
-                usdRate: mailerCostConfig.fx.usdRate,
-                costResult,
-              });
+              void import("@/lib/cost/exportCostImage").then(
+                ({ downloadMailerCostImage }) =>
+                  downloadMailerCostImage({
+                    clientName,
+                    length: L,
+                    width: W,
+                    height: H,
+                    unit,
+                    openWidthIn: result.in.openWidth,
+                    openHeightIn: result.in.openHeight,
+                    quantity,
+                    materialType,
+                    laminationSides,
+                    stockGsm: mailerCostConfig.stock.gsm,
+                    shippingGsm: mailerCostConfig.shipping.gsm,
+                    shippingRatePerKg: mailerCostConfig.shipping.ratePerKg,
+                    profitRatio: profitRatio ?? 1,
+                    usdRate: mailerCostConfig.fx.usdRate,
+                    costResult,
+                  }),
+              );
             }}
           />
         )}

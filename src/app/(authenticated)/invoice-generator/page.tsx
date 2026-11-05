@@ -18,10 +18,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { clsx } from "clsx";
 import { Card } from "@/components/ui/Card";
-import {
-  exportInvoicePdf,
-  type InvoiceBullet,
-} from "@/lib/invoice/exportInvoicePdf";
+import type { InvoiceBullet } from "@/lib/invoice/exportInvoicePdf";
 import type { InvoiceDraftPayload } from "@/lib/invoice/draft";
 import { INVOICE_CHECKLIST_GROUPS } from "@/lib/invoice/checklist";
 
@@ -449,6 +446,7 @@ function InvoiceGeneratorForm() {
 
   async function handleDownload() {
     if (!canDownload || total == null || !invoiceId) return;
+    const { exportInvoicePdf } = await import("@/lib/invoice/exportInvoicePdf");
     await exportInvoicePdf({
       invoiceId,
       date: dateStr,

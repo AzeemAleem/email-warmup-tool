@@ -27,7 +27,6 @@ import {
   quantityError,
   runCostEngine,
 } from "@/lib/cost/costEngine";
-import { downloadRigidCostImage } from "@/lib/cost/exportCostImage";
 import {
   SaveToProjectModal,
   type EditCalculationMeta,
@@ -1443,22 +1442,25 @@ function RigidBoxCalculatorForm() {
             onArtSheetKeyChange={setArtSheetKeyOverride}
             clientName={clientName}
             onDownloadImage={() => {
-              void downloadRigidCostImage({
-                clientName,
-                length: L,
-                width: W,
-                height: H,
-                unit,
-                openWidthIn: result.in.openWidth,
-                openHeightIn: result.in.openHeight,
-                quantity,
-                paperType,
-                printSides: paperType === "art" ? printSides : "single",
-                printColorMode,
-                profitRatio: profitRatio ?? 1,
-                usdRate: costConfig.fx.usdRate,
-                costResult,
-              });
+              void import("@/lib/cost/exportCostImage").then(
+                ({ downloadRigidCostImage }) =>
+                  downloadRigidCostImage({
+                    clientName,
+                    length: L,
+                    width: W,
+                    height: H,
+                    unit,
+                    openWidthIn: result.in.openWidth,
+                    openHeightIn: result.in.openHeight,
+                    quantity,
+                    paperType,
+                    printSides: paperType === "art" ? printSides : "single",
+                    printColorMode,
+                    profitRatio: profitRatio ?? 1,
+                    usdRate: costConfig.fx.usdRate,
+                    costResult,
+                  }),
+              );
             }}
             spotUvEnabled={spotUvEnabled}
             spotUvOverride={spotUvOverride}

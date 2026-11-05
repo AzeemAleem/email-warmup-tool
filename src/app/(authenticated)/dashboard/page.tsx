@@ -22,6 +22,8 @@ async function getDashboardData() {
     todayStats,
     chartData,
     config,
+    todayVolumePlan,
+    poolAccounts,
   ] = await Promise.all([
     prisma.account.count({ where: { status: { not: "REMOVED" } } }),
     prisma.account.count({ where: { role: "OLD", status: { not: "REMOVED" } } }),
@@ -40,12 +42,25 @@ async function getDashboardData() {
       select: { scheduledFor: true, status: true },
     }),
     prisma.warmupConfig.findUnique({ where: { id: "singleton" } }),
+    prisma.account.aggregate({
+      where: { status: "ACTIVE" },
+      _sum: { dailyTargetVolume: true },
+    }),
+    prisma.account.findMany({
+      where: { status: { not: "REMOVED" } },
+      orderBy: [{ role: "asc" }, { status: "asc" }],
+      take: 20,
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        status: true,
+        trustWeight: true,
+        dailyTargetVolume: true,
+        sentToday: true,
+      },
+    }),
   ]);
-
-  const todayVolumePlan = await prisma.account.aggregate({
-    where: { status: "ACTIVE" },
-    _sum: { dailyTargetVolume: true },
-  });
 
   return {
     totalAccounts,
@@ -57,6 +72,7 @@ async function getDashboardData() {
     chartData,
     config,
     todayVolumePlan: todayVolumePlan._sum.dailyTargetVolume || 0,
+    poolAccounts,
   };
 }
 
@@ -187,7 +203,7 @@ export default async function DashboardPage() {
       </div>
 
       <WarmupChart events={data.chartData} />
-      <PoolHealth />
+      <PoolHealth accounts={data.poolAccounts} />
     </div>
   );
 }

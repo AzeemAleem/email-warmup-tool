@@ -87,8 +87,40 @@ function CalcRow({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [fullSnapshot, setFullSnapshot] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
-  const snap = calc.snapshot;
+  useEffect(() => {
+    if (!expanded) return;
+    if (fullSnapshot) return;
+    if (calc.snapshot._itemsDeferred !== true) return;
+
+    let cancelled = false;
+    setLoadingDetails(true);
+    fetch(`/api/calculations/${calc.id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.snapshot || typeof data.snapshot !== "object") {
+          return;
+        }
+        setFullSnapshot(data.snapshot as Record<string, unknown>);
+      })
+      .catch(() => {
+        /* keep slim snapshot */
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingDetails(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [expanded, fullSnapshot, calc.id, calc.snapshot._itemsDeferred]);
+
+  const snap = fullSnapshot ?? calc.snapshot;
   const isMailer = calc.type === "MAILER_BOX";
   const Icon = isMailer ? CubeIcon : Square3Stack3DIcon;
   const typeLabel = isMailer ? "Mailer Box" : "Rigid Box";
@@ -214,6 +246,9 @@ function CalcRow({
 
       {expanded && (
         <div className="border-t border-gray-700 px-4 py-4 space-y-4 bg-gray-900/40">
+          {loadingDetails && (
+            <p className="text-xs text-gray-500">Loading cost breakdown…</p>
+          )}
           {/* Dimensions */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
             {["length", "width", "height"].map((k) =>
