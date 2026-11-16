@@ -1979,7 +1979,13 @@ export function CostCalculation({
               })}
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+              <div>
+                <p className="text-gray-600">Total quantity</p>
+                <p className="text-gray-300 mt-0.5 tabular-nums">
+                  {(quantity ?? 0).toLocaleString("en-US")}
+                </p>
+              </div>
               {(config.shipping.weightMode ?? "actual") === "volumetric" ? (
                 <div>
                   <p className="text-gray-600">Closed size (cm)</p>

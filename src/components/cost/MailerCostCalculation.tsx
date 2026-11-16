@@ -797,7 +797,13 @@ export function MailerCostCalculation({
               {formatPkrTotal(shippingItem.total)}
             </span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs mb-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs mb-3">
+            <div>
+              <p className="text-gray-600">Total quantity</p>
+              <p className="text-gray-300 mt-0.5 tabular-nums">
+                {quantity.toLocaleString("en-US")}
+              </p>
+            </div>
             <div>
               <p className="text-gray-600">Weight</p>
               <p className="text-gray-300 mt-0.5 tabular-nums">
