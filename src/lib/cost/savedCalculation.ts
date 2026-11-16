@@ -71,3 +71,126 @@ export function snapshotItemIds(snapshot: Record<string, unknown>): Set<string> 
   }
   return ids;
 }
+
+type SnapshotItemLike = {
+  id?: unknown;
+  total?: unknown;
+  meta?: Record<string, string | number | boolean | null> | null;
+};
+
+function snapshotItems(
+  snapshot: Record<string, unknown>,
+): SnapshotItemLike[] {
+  return Array.isArray(snapshot.items)
+    ? (snapshot.items as SnapshotItemLike[])
+    : [];
+}
+
+function findSnapshotItem(
+  snapshot: Record<string, unknown>,
+  itemId: string,
+): SnapshotItemLike | undefined {
+  return snapshotItems(snapshot).find(
+    (item) => typeof item?.id === "string" && item.id === itemId,
+  );
+}
+
+/**
+ * Restore a manual line override. Prefers explicit snapshot fields; falls back
+ * to items[].meta.usedAutomatic === false from older saves.
+ */
+export function restoreLineOverride(
+  snapshot: Record<string, unknown>,
+  opts: {
+    overrideKey: string;
+    rawKey: string;
+    itemId: string;
+  },
+): { override: boolean; raw: string } {
+  if (typeof snapshot[opts.overrideKey] === "boolean") {
+    return {
+      override: snapshot[opts.overrideKey] as boolean,
+      raw: snapStr(snapshot[opts.rawKey]),
+    };
+  }
+
+  const item = findSnapshotItem(snapshot, opts.itemId);
+  if (
+    item &&
+    item.meta &&
+    item.meta.usedAutomatic === false &&
+    typeof item.total === "number" &&
+    Number.isFinite(item.total)
+  ) {
+    return { override: true, raw: String(item.total) };
+  }
+
+  return { override: false, raw: "" };
+}
+
+/** Restore Extra line from explicit field or snapshot items. */
+export function restoreExtraRaw(snapshot: Record<string, unknown>): string {
+  const direct = snapStr(snapshot.extraRaw);
+  if (direct) return direct;
+  const extraTotal = snapNum(snapshot.extraTotal);
+  if (extraTotal != null && extraTotal > 0) return String(extraTotal);
+  const item = findSnapshotItem(snapshot, "extra");
+  if (typeof item?.total === "number" && Number.isFinite(item.total) && item.total > 0) {
+    return String(item.total);
+  }
+  return "";
+}
+
+/**
+ * Restore art/mailer sheet key. Prefers explicit key; falls back to sheet W×H in item meta.
+ */
+export function restoreArtSheetKey(
+  snapshot: Record<string, unknown>,
+  itemIds: string[] = ["paper", "stock"],
+): string | null {
+  const direct = snapStr(snapshot.artSheetKeyOverride);
+  if (direct) return direct;
+
+  for (const id of itemIds) {
+    const item = findSnapshotItem(snapshot, id);
+    const w = item?.meta?.sheetWidth;
+    const h = item?.meta?.sheetHeight;
+    if (
+      typeof w === "number" &&
+      Number.isFinite(w) &&
+      typeof h === "number" &&
+      Number.isFinite(h)
+    ) {
+      return `${w}x${h}`;
+    }
+  }
+  return null;
+}
+
+/** Deep-merge a plain snapshot config object onto defaults (JSON-safe sections only). */
+export function mergeCostConfigFromSnapshot<T extends Record<string, unknown>>(
+  defaults: T,
+  incoming: unknown,
+): T {
+  if (!incoming || typeof incoming !== "object" || Array.isArray(incoming)) {
+    return defaults;
+  }
+  const src = incoming as Record<string, unknown>;
+  const out: Record<string, unknown> = { ...defaults };
+  for (const [key, value] of Object.entries(src)) {
+    const prev = out[key];
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      prev &&
+      typeof prev === "object" &&
+      !Array.isArray(prev)
+    ) {
+      out[key] = { ...(prev as Record<string, unknown>), ...(value as object) };
+    } else if (value !== undefined) {
+      out[key] = value;
+    }
+  }
+  return out as T;
+}

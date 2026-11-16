@@ -46,6 +46,10 @@ import {
 import { buildCalculationCore } from "@/lib/cost/calculationSnapshot";
 import {
   editMetaFromSaved,
+  mergeCostConfigFromSnapshot,
+  restoreArtSheetKey,
+  restoreExtraRaw,
+  restoreLineOverride,
   snapBool,
   snapNum,
   snapStr,
@@ -215,6 +219,7 @@ function MailerBoxCalculatorForm() {
         const ratio = snapNum(snap.profitRatio);
         setProfitRatioRaw(ratio != null ? String(ratio) : "1.5");
         setClientName(snapStr(snap.clientName));
+        setExtraRaw(restoreExtraRaw(snap));
 
         const material =
           snap.material === "kraft" || snap.material === "cardboard"
@@ -229,27 +234,158 @@ function MailerBoxCalculatorForm() {
         setCorrugationEnabled(snapBool(snap.corrugationEnabled, true));
         setPrintColorMode(snap.printColorMode === "one" ? "one" : "cmyk");
 
+        const foldMm = snapNum(snap.foldAllowanceMm);
+        if (foldMm != null && foldMm >= 0) {
+          setFoldAllowanceMm(foldMm);
+          setFoldInput(formatForInput(fromMm(foldMm, nextUnit), nextUnit));
+        }
+        const padW = snapNum(snap.paddingWIn);
+        const padH = snapNum(snap.paddingHIn);
+        if (padW != null && padW >= 0) {
+          setPaddingWIn(padW);
+          setPaddingWInput(String(padW));
+        }
+        if (padH != null && padH >= 0) {
+          setPaddingHIn(padH);
+          setPaddingHInput(String(padH));
+        }
+
+        const openWIn = snapNum(snap.openWidthIn);
+        const openHIn = snapNum(snap.openHeightIn);
+        const restoreOpen =
+          snapBool(snap.openOverride, false) ||
+          (typeof snap.openOverride !== "boolean" &&
+            openWIn != null &&
+            openHIn != null);
+        if (restoreOpen && openWIn != null && openHIn != null) {
+          setOpenOverride(true);
+          const rawW = snapStr(snap.openWidthRaw);
+          const rawH = snapStr(snap.openHeightRaw);
+          setOpenWidthRaw(
+            rawW ||
+              formatForInput(convertLength(openWIn, "in", nextUnit), nextUnit),
+          );
+          setOpenHeightRaw(
+            rawH ||
+              formatForInput(convertLength(openHIn, "in", nextUnit), nextUnit),
+          );
+        } else {
+          setOpenOverride(false);
+          setOpenWidthRaw("");
+          setOpenHeightRaw("");
+        }
+
+        if (typeof snap.totalSheetsOverride === "boolean") {
+          setTotalSheetsOverride(snap.totalSheetsOverride);
+          setTotalSheetsManualRaw(
+            snap.totalSheetsOverride ? snapStr(snap.totalSheetsManualRaw) : "",
+          );
+        } else {
+          // Older saves: lock the sheet count that was used at save time
+          const stockItem = Array.isArray(snap.items)
+            ? (
+                snap.items as {
+                  id?: string;
+                  meta?: { totalSheets?: unknown };
+                }[]
+              ).find((i) => i?.id === "stock")
+            : undefined;
+          const savedSheets = snapNum(stockItem?.meta?.totalSheets);
+          if (savedSheets != null && savedSheets >= 1) {
+            setTotalSheetsOverride(true);
+            setTotalSheetsManualRaw(String(savedSheets));
+          } else {
+            setTotalSheetsOverride(false);
+            setTotalSheetsManualRaw("");
+          }
+        }
+
+        const applyOv = (
+          setterOv: (v: boolean) => void,
+          setterRaw: (v: string) => void,
+          overrideKey: string,
+          rawKey: string,
+          itemId: string,
+        ) => {
+          const ov = restoreLineOverride(snap, { overrideKey, rawKey, itemId });
+          setterOv(ov.override);
+          setterRaw(ov.raw);
+        };
+        applyOv(setStockOverride, setStockManualRaw, "stockOverride", "stockManualRaw", "stock");
+        applyOv(
+          setLaminationOverride,
+          setLaminationManualRaw,
+          "laminationOverride",
+          "laminationManualRaw",
+          "lamination",
+        );
+        applyOv(setPlatesOverride, setPlatesManualRaw, "platesOverride", "platesManualRaw", "plates");
+        applyOv(
+          setPrintingOverride,
+          setPrintingManualRaw,
+          "printingOverride",
+          "printingManualRaw",
+          "printing",
+        );
+        applyOv(setDieOverride, setDieManualRaw, "dieOverride", "dieManualRaw", "die");
+        applyOv(
+          setCuttingOverride,
+          setCuttingManualRaw,
+          "cuttingOverride",
+          "cuttingManualRaw",
+          "cutting",
+        );
+        applyOv(
+          setPastingOverride,
+          setPastingManualRaw,
+          "pastingOverride",
+          "pastingManualRaw",
+          "pasting",
+        );
+        applyOv(
+          setCorrugationOverride,
+          setCorrugationManualRaw,
+          "corrugationOverride",
+          "corrugationManualRaw",
+          "corrugation",
+        );
+        applyOv(
+          setShippingOverride,
+          setShippingManualRaw,
+          "shippingOverride",
+          "shippingManualRaw",
+          "shipping",
+        );
+
+        setArtSheetKeyOverride(restoreArtSheetKey(snap, ["stock", "paper"]));
+
         const stockGsm = snapNum(snap.stockGsm);
         const shippingGsm = snapNum(snap.shippingGsm);
         const shippingRate = snapNum(snap.shippingRatePerKg);
         const usdRate = snapNum(snap.usdRate);
-        setMailerCostConfig((prev) => ({
-          ...prev,
-          stock: {
-            ...prev.stock,
-            materialType: material,
-            ...(stockGsm != null ? { gsm: stockGsm } : {}),
-          },
-          shipping: {
-            ...prev.shipping,
-            ...(shippingGsm != null ? { gsm: shippingGsm } : {}),
-            ...(shippingRate != null ? { ratePerKg: shippingRate } : {}),
-          },
-          fx: {
-            ...prev.fx,
-            ...(usdRate != null ? { usdRate } : {}),
-          },
-        }));
+        setMailerCostConfig((prev) => {
+          const merged = mergeCostConfigFromSnapshot(
+            prev as unknown as Record<string, unknown>,
+            snap.mailerCostConfig,
+          ) as unknown as MailerCostConfig;
+          return {
+            ...merged,
+            stock: {
+              ...merged.stock,
+              materialType: material,
+              ...(stockGsm != null ? { gsm: stockGsm } : {}),
+            },
+            shipping: {
+              ...merged.shipping,
+              ...(shippingGsm != null ? { gsm: shippingGsm } : {}),
+              ...(shippingRate != null ? { ratePerKg: shippingRate } : {}),
+            },
+            fx: {
+              ...merged.fx,
+              ...(usdRate != null ? { usdRate } : {}),
+            },
+          };
+        });
 
         setEditCalculation(editMetaFromSaved(calc));
         setLoadingEdit(false);
@@ -354,12 +490,9 @@ function MailerBoxCalculatorForm() {
     return recommendSheet(nestingPiece, ALL_SHEETS);
   }, [nestingPiece]);
 
-  // Drop manual sheet if it no longer fits
+  // Drop manual sheet only after nesting is ready and the sheet no longer fits
   useEffect(() => {
-    if (!artSheetKeyOverride || !nestingRecommendation) {
-      if (!nestingRecommendation) setArtSheetKeyOverride(null);
-      return;
-    }
+    if (!artSheetKeyOverride || !nestingRecommendation) return;
     const stillFits = nestingRecommendation.allResults.some(
       (r) => r.fits && sheetKey(r.sheet) === artSheetKeyOverride,
     );
@@ -1372,6 +1505,12 @@ function MailerBoxCalculatorForm() {
             height: H,
             openWidthIn: result.in.openWidth,
             openHeightIn: result.in.openHeight,
+            openOverride,
+            openWidthRaw: openOverride ? openWidthRaw : "",
+            openHeightRaw: openOverride ? openHeightRaw : "",
+            foldAllowanceMm,
+            paddingWIn,
+            paddingHIn,
             material: materialType,
             laminationSides,
             corrugationEnabled,
@@ -1379,7 +1518,31 @@ function MailerBoxCalculatorForm() {
             stockGsm: mailerCostConfig.stock.gsm,
             shippingGsm: mailerCostConfig.shipping.gsm,
             shippingRatePerKg: mailerCostConfig.shipping.ratePerKg,
+            mailerCostConfig,
             clientName: clientName || null,
+            extraRaw: extraRaw || null,
+            extraTotal: parseExtraTotal(extraRaw),
+            artSheetKeyOverride,
+            totalSheetsOverride,
+            totalSheetsManualRaw: totalSheetsOverride ? totalSheetsManualRaw : "",
+            stockOverride,
+            stockManualRaw: stockOverride ? stockManualRaw : "",
+            laminationOverride,
+            laminationManualRaw: laminationOverride ? laminationManualRaw : "",
+            platesOverride,
+            platesManualRaw: platesOverride ? platesManualRaw : "",
+            printingOverride,
+            printingManualRaw: printingOverride ? printingManualRaw : "",
+            dieOverride,
+            dieManualRaw: dieOverride ? dieManualRaw : "",
+            cuttingOverride,
+            cuttingManualRaw: cuttingOverride ? cuttingManualRaw : "",
+            pastingOverride,
+            pastingManualRaw: pastingOverride ? pastingManualRaw : "",
+            corrugationOverride,
+            corrugationManualRaw: corrugationOverride ? corrugationManualRaw : "",
+            shippingOverride,
+            shippingManualRaw: shippingOverride ? shippingManualRaw : "",
           }}
           onClose={() => setShowSaveModal(false)}
         />

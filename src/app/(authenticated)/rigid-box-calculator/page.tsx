@@ -34,6 +34,10 @@ import {
 import { buildCalculationCore } from "@/lib/cost/calculationSnapshot";
 import {
   editMetaFromSaved,
+  mergeCostConfigFromSnapshot,
+  restoreArtSheetKey,
+  restoreExtraRaw,
+  restoreLineOverride,
   snapBool,
   snapNum,
   snapStr,
@@ -304,6 +308,7 @@ function RigidBoxCalculatorForm() {
         const ratio = snapNum(snap.profitRatio);
         setProfitRatioRaw(ratio != null ? String(ratio) : "");
         setClientName(snapStr(snap.clientName));
+        setExtraRaw(restoreExtraRaw(snap));
 
         const nextPaper =
           snap.paperType === "morocco" || snap.paperType === "art"
@@ -333,13 +338,136 @@ function RigidBoxCalculatorForm() {
           snapBool(snap.embossingEnabled, itemIds.has("embossing")),
         );
 
-        const usdRate = snapNum(snap.usdRate);
-        if (usdRate != null) {
-          setCostConfig((prev) => ({
-            ...prev,
-            fx: { ...prev.fx, usdRate },
-          }));
+        const wAllow = snapNum(snap.widthAllowanceMm);
+        const hAllow = snapNum(snap.heightAllowanceMm);
+        if (wAllow != null && wAllow >= 0) {
+          setWidthAllowanceMm(wAllow);
+          setWidthAllowInput(formatForInput(fromMm(wAllow, nextUnit), nextUnit));
         }
+        if (hAllow != null && hAllow >= 0) {
+          setHeightAllowanceMm(hAllow);
+          setHeightAllowInput(formatForInput(fromMm(hAllow, nextUnit), nextUnit));
+        }
+        const padW = snapNum(snap.paddingWIn);
+        const padH = snapNum(snap.paddingHIn);
+        if (padW != null && padW >= 0) {
+          setPaddingWIn(padW);
+          setPaddingWInput(String(padW));
+        }
+        if (padH != null && padH >= 0) {
+          setPaddingHIn(padH);
+          setPaddingHInput(String(padH));
+        }
+
+        const openWIn = snapNum(snap.openWidthIn);
+        const openHIn = snapNum(snap.openHeightIn);
+        const restoreOpen =
+          snapBool(snap.openOverride, false) ||
+          (typeof snap.openOverride !== "boolean" &&
+            openWIn != null &&
+            openHIn != null);
+        if (restoreOpen && openWIn != null && openHIn != null) {
+          setOpenOverride(true);
+          const rawW = snapStr(snap.openWidthRaw);
+          const rawH = snapStr(snap.openHeightRaw);
+          setOpenWidthRaw(
+            rawW ||
+              formatForInput(convertLength(openWIn, "in", nextUnit), nextUnit),
+          );
+          setOpenHeightRaw(
+            rawH ||
+              formatForInput(convertLength(openHIn, "in", nextUnit), nextUnit),
+          );
+        } else {
+          setOpenOverride(false);
+          setOpenWidthRaw("");
+          setOpenHeightRaw("");
+        }
+
+        if (typeof snap.artSheetsOverride === "boolean") {
+          setArtSheetsOverride(snap.artSheetsOverride);
+          setArtSheetsManualRaw(
+            snap.artSheetsOverride ? snapStr(snap.artSheetsManualRaw) : "",
+          );
+        } else {
+          // Older saves: prefer explicit manual sheets, else lock piecesRequired
+          const paperItem = Array.isArray(snap.items)
+            ? (
+                snap.items as {
+                  id?: string;
+                  meta?: {
+                    sheetsRequiredManual?: unknown;
+                    piecesRequired?: unknown;
+                  };
+                }[]
+              ).find((i) => i?.id === "paper")
+            : undefined;
+          const savedSheets =
+            snapNum(paperItem?.meta?.sheetsRequiredManual) ??
+            snapNum(paperItem?.meta?.piecesRequired);
+          if (savedSheets != null && savedSheets >= 1) {
+            setArtSheetsOverride(true);
+            setArtSheetsManualRaw(String(savedSheets));
+          } else {
+            setArtSheetsOverride(false);
+            setArtSheetsManualRaw("");
+          }
+        }
+
+        const applyOv = (
+          setterOv: (v: boolean) => void,
+          setterRaw: (v: string) => void,
+          overrideKey: string,
+          rawKey: string,
+          itemId: string,
+        ) => {
+          const ov = restoreLineOverride(snap, { overrideKey, rawKey, itemId });
+          setterOv(ov.override);
+          setterRaw(ov.raw);
+        };
+        applyOv(setSpotUvOverride, setSpotUvManualRaw, "spotUvOverride", "spotUvManualRaw", "spotUv");
+        applyOv(setDieOverride, setDieManualRaw, "dieOverride", "dieManualRaw", "die");
+        applyOv(
+          setPrintingOverride,
+          setPrintingManualRaw,
+          "printingOverride",
+          "printingManualRaw",
+          "printing",
+        );
+        applyOv(setPlatesOverride, setPlatesManualRaw, "platesOverride", "platesManualRaw", "plates");
+        applyOv(
+          setFoilingOverride,
+          setFoilingManualRaw,
+          "foilingOverride",
+          "foilingManualRaw",
+          "foiling",
+        );
+        applyOv(setLaborOverride, setLaborManualRaw, "laborOverride", "laborManualRaw", "labor");
+        applyOv(setDebossOverride, setDebossManualRaw, "debossOverride", "debossManualRaw", "deboss");
+        applyOv(
+          setEmbossingOverride,
+          setEmbossingManualRaw,
+          "embossingOverride",
+          "embossingManualRaw",
+          "embossing",
+        );
+
+        setArtSheetKeyOverride(restoreArtSheetKey(snap, ["paper", "stock"]));
+
+        const usdRate = snapNum(snap.usdRate);
+        setCostConfig((prev) => {
+          const merged = mergeCostConfigFromSnapshot(
+            prev as unknown as Record<string, unknown>,
+            snap.costConfig,
+          ) as unknown as CostConfig;
+          return {
+            ...merged,
+            fx: {
+              ...merged.fx,
+              ...(usdRate != null ? { usdRate } : {}),
+            },
+          };
+        });
 
         setEditCalculation(editMetaFromSaved(calc));
         setLoadingEdit(false);
@@ -462,12 +590,9 @@ function RigidBoxCalculatorForm() {
     return recommendBestSheet(artPiece, ART_PAPER_SHEETS);
   }, [artPiece]);
 
-  // Drop manual sheet if it no longer fits after size/padding change
+  // Drop manual sheet only after nesting is ready and the sheet no longer fits
   useEffect(() => {
-    if (!artSheetKeyOverride || !artRecommendation) {
-      if (!artRecommendation) setArtSheetKeyOverride(null);
-      return;
-    }
+    if (!artSheetKeyOverride || !artRecommendation) return;
     const stillFits = artRecommendation.allResults.some(
       (r) => r.fits && sheetKey(r.sheet) === artSheetKeyOverride,
     );
@@ -1597,6 +1722,13 @@ function RigidBoxCalculatorForm() {
             height: H,
             openWidthIn: result.in.openWidth,
             openHeightIn: result.in.openHeight,
+            openOverride,
+            openWidthRaw: openOverride ? openWidthRaw : "",
+            openHeightRaw: openOverride ? openHeightRaw : "",
+            widthAllowanceMm,
+            heightAllowanceMm,
+            paddingWIn,
+            paddingHIn,
             paperType,
             printSides,
             printColorMode,
@@ -1609,7 +1741,29 @@ function RigidBoxCalculatorForm() {
             laborEnabled,
             debossEnabled,
             embossingEnabled,
+            costConfig,
             clientName: clientName || null,
+            extraRaw: extraRaw || null,
+            extraTotal: parseExtraTotal(extraRaw),
+            artSheetKeyOverride,
+            artSheetsOverride,
+            artSheetsManualRaw: artSheetsOverride ? artSheetsManualRaw : "",
+            spotUvOverride,
+            spotUvManualRaw: spotUvOverride ? spotUvManualRaw : "",
+            dieOverride,
+            dieManualRaw: dieOverride ? dieManualRaw : "",
+            printingOverride,
+            printingManualRaw: printingOverride ? printingManualRaw : "",
+            platesOverride,
+            platesManualRaw: platesOverride ? platesManualRaw : "",
+            foilingOverride,
+            foilingManualRaw: foilingOverride ? foilingManualRaw : "",
+            laborOverride,
+            laborManualRaw: laborOverride ? laborManualRaw : "",
+            debossOverride,
+            debossManualRaw: debossOverride ? debossManualRaw : "",
+            embossingOverride,
+            embossingManualRaw: embossingOverride ? embossingManualRaw : "",
           }}
           onClose={() => setShowSaveModal(false)}
         />
