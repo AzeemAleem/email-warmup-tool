@@ -115,7 +115,7 @@ export interface ShippingConfig {
 }
 
 export interface FxConfig {
-  /** PKR per 1 USD (default 275) */
+  /** PKR per 1 USD (default 255) */
   usdRate: number;
 }
 
@@ -222,7 +222,7 @@ export const DEFAULT_SHIPPING_CONFIG: Readonly<ShippingConfig> = {
 };
 
 export const DEFAULT_FX_CONFIG: Readonly<FxConfig> = {
-  usdRate: 275,
+  usdRate: 255,
 };
 
 export const DEFAULT_COST_CONFIG: Readonly<CostConfig> = {

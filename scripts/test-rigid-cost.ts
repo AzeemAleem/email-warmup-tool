@@ -934,7 +934,7 @@ assert.equal(
   const withProfit = roundMoney(without * 1.5);
   assert.equal(pkrToUsd(without, 275), roundMoney(without / 275));
   assert.equal(pkrToUsd(withProfit, 275), roundMoney(withProfit / 275));
-  assert.equal(DEFAULT_COST_CONFIG.fx.usdRate, 275);
+  assert.equal(DEFAULT_COST_CONFIG.fx.usdRate, 255);
 }
 
 // ── Volumetric shipping weight ─────────────────────────────────────────────

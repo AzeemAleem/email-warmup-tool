@@ -1001,6 +1001,31 @@ function RigidBoxCalculatorForm() {
             />
           </div>
         </div>
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+              USD Rate (PKR)
+            </label>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="1"
+              min="0"
+              value={costConfig.fx.usdRate}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                if (Number.isFinite(n) && n > 0) {
+                  setCostConfig((c) => ({
+                    ...c,
+                    fx: { ...c.fx, usdRate: n },
+                  }));
+                }
+              }}
+              className={inputCls(false)}
+            />
+            <p className="mt-1 text-[11px] text-gray-600">Default: 255</p>
+          </div>
+        </div>
         <div className="mt-4 pt-4 border-t border-gray-800 flex flex-wrap gap-5">
           <label className="inline-flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
             <input
