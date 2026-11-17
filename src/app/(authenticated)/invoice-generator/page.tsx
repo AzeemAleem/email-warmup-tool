@@ -363,6 +363,7 @@ function InvoiceGeneratorForm() {
   function resetNewForm() {
     setSavedId(null);
     setSaveMsg(null);
+    setLinkedProject(null);
     setInvoiceId(makeQuoteNo());
     setDateStr(fmtDate(new Date()));
     setValidStr(fmtDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));
@@ -422,9 +423,30 @@ function InvoiceGeneratorForm() {
     try {
       const res = await fetch(`/api/invoices/${id}`);
       if (!res.ok) throw new Error("load failed");
-      const data = (await res.json()) as { id: string; payload: InvoiceDraftPayload };
+      const data = (await res.json()) as {
+        id: string;
+        payload: InvoiceDraftPayload;
+        projectId?: string | null;
+        project?: {
+          id: string;
+          name: string;
+          clientId: string;
+          client: { id: string; name: string; email: string | null };
+        } | null;
+      };
       applyPayload(data.payload);
       setSavedId(data.id);
+      if (data.project) {
+        setLinkedProject({
+          clientId: data.project.clientId,
+          clientName: data.project.client.name,
+          clientEmail: data.project.client.email,
+          projectId: data.project.id,
+          projectName: data.project.name,
+        });
+      } else {
+        setLinkedProject(null);
+      }
       setSaveMsg("Loaded for editing — update save or download PDF");
     } catch {
       setSaveMsg("Failed to load invoice");

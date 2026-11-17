@@ -79,6 +79,11 @@ export function ProjectPicker({
     value?.clientId ?? "",
   );
 
+  // Keep dropdown selection in sync when parent restores a saved project
+  useEffect(() => {
+    setSelectedClientId(value?.clientId ?? "");
+  }, [value?.clientId, value?.projectId]);
+
   const filteredClients = useMemo(() => {
     const q = search.toLowerCase();
     if (!q) return clients;

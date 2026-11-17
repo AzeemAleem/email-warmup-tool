@@ -266,18 +266,23 @@ function ProjectForm({
   saving: boolean;
   error?: string;
 }) {
-  const [form, setForm] = useState<ProjectFormState>(
-    initial ?? {
+  const [form, setForm] = useState<ProjectFormState>(() => {
+    if (initial) return initial;
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    return {
       name: "",
       status: "ACTIVE",
       dealType: "QUOTATION",
       trackingId: "",
-      startDate: "",
+      startDate: `${yyyy}-${mm}-${dd}`,
       deadline: "",
       shippingAddress: "",
       notes: "",
-    },
-  );
+    };
+  });
   const set = (k: keyof ProjectFormState) => (v: string) =>
     setForm((f) => ({ ...f, [k]: v }));
 

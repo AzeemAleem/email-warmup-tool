@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProjectHistory } from "@/components/project/ProjectHistory";
 import { DealTypeBadge } from "@/components/project/DealTypeBadge";
+import { FollowUpControls } from "@/components/project/FollowUpControls";
 import {
   PencilSquareIcon,
   TrashIcon,
@@ -31,6 +32,10 @@ export interface ProjectDetail {
   shippingAddress: string | null;
   requirements: string[];
   notes: string | null;
+  followUpStatus: string;
+  followUpStep: number;
+  nextFollowUpOn: string | null;
+  lastFollowUpAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -293,6 +298,24 @@ export function ProjectDetailClient({ initial }: { initial: ProjectDetail }) {
         dealType: raw.dealType ?? "QUOTATION",
         shippingAddress: raw.shippingAddress ?? null,
         requirements: Array.isArray(raw.requirements) ? raw.requirements : [],
+        followUpStatus: raw.followUpStatus ?? project.followUpStatus,
+        followUpStep: raw.followUpStep ?? project.followUpStep,
+        nextFollowUpOn:
+          raw.nextFollowUpOn != null
+            ? typeof raw.nextFollowUpOn === "string"
+              ? raw.nextFollowUpOn
+              : new Date(raw.nextFollowUpOn).toISOString()
+            : raw.nextFollowUpOn === null
+              ? null
+              : project.nextFollowUpOn,
+        lastFollowUpAt:
+          raw.lastFollowUpAt != null
+            ? typeof raw.lastFollowUpAt === "string"
+              ? raw.lastFollowUpAt
+              : new Date(raw.lastFollowUpAt).toISOString()
+            : raw.lastFollowUpAt === null
+              ? null
+              : project.lastFollowUpAt,
       };
       setProject(updated);
       setEditing(false);
@@ -553,6 +576,28 @@ export function ProjectDetailClient({ initial }: { initial: ProjectDetail }) {
           ) : (
             <p className="text-sm text-gray-600 italic">No notes.</p>
           )}
+        </div>
+
+        {/* Follow-up cadence */}
+        <div className="border-t border-gray-800 pt-5">
+          <FollowUpControls
+            project={{
+              id: project.id,
+              followUpStatus: project.followUpStatus,
+              followUpStep: project.followUpStep,
+              nextFollowUpOn: project.nextFollowUpOn,
+              lastFollowUpAt: project.lastFollowUpAt,
+            }}
+            onUpdated={(next) =>
+              setProject((p) => ({
+                ...p,
+                followUpStatus: next.followUpStatus,
+                followUpStep: next.followUpStep,
+                nextFollowUpOn: next.nextFollowUpOn,
+                lastFollowUpAt: next.lastFollowUpAt,
+              }))
+            }
+          />
         </div>
 
         {/* Calculations + Invoices history */}

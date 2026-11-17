@@ -15,6 +15,7 @@ import {
   DocumentTextIcon,
   FolderOpenIcon,
   BuildingOffice2Icon,
+  PhoneArrowUpRightIcon,
 } from "@heroicons/react/24/outline";
 import { clsx } from "clsx";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -45,6 +46,7 @@ const navigation: NavItem[] = [
     icon: BuildingOffice2Icon,
     children: [
       { name: "Projects", href: "/projects", icon: FolderOpenIcon },
+      { name: "Follow-ups", href: "/follow-ups", icon: PhoneArrowUpRightIcon },
     ],
   },
   { kind: "link", name: "Accounts", href: "/accounts", icon: UsersIcon },
@@ -63,6 +65,9 @@ function linkActive(pathname: string, href: string) {
   }
   if (href === "/projects") {
     return pathname === "/projects" || pathname.startsWith("/projects/");
+  }
+  if (href === "/follow-ups") {
+    return pathname === "/follow-ups" || pathname.startsWith("/follow-ups/");
   }
   if (href === "/invoices") {
     return pathname === "/invoices" || pathname.startsWith("/invoices/");

@@ -4,11 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
+  ArrowDownTrayIcon,
   EyeIcon,
   PencilSquareIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { clsx } from "clsx";
+import { buildInvoicePdfDataFromPayload } from "@/lib/invoice/checklist";
+import type { InvoiceDraftPayload } from "@/lib/invoice/draft";
 
 export interface InvoiceRow {
   id: string;
@@ -46,6 +49,7 @@ export function InvoicesTable({ invoices: initial }: { invoices: InvoiceRow[] })
   const router = useRouter();
   const [rows, setRows] = useState(initial);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this saved invoice? This cannot be undone.")) return;
@@ -59,6 +63,26 @@ export function InvoicesTable({ invoices: initial }: { invoices: InvoiceRow[] })
       alert("Failed to delete invoice");
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function handleDownload(id: string) {
+    setDownloadingId(id);
+    try {
+      const res = await fetch(`/api/invoices/${id}`);
+      if (!res.ok) throw new Error("load failed");
+      const data = (await res.json()) as { payload: InvoiceDraftPayload };
+      const pdfData = buildInvoicePdfDataFromPayload(data.payload);
+      if (!pdfData) {
+        alert("This invoice is missing quantity or unit price, so PDF cannot be generated.");
+        return;
+      }
+      const { exportInvoicePdf } = await import("@/lib/invoice/exportInvoicePdf");
+      await exportInvoicePdf(pdfData);
+    } catch {
+      alert("Failed to download invoice PDF");
+    } finally {
+      setDownloadingId(null);
     }
   }
 
@@ -142,6 +166,16 @@ export function InvoicesTable({ invoices: initial }: { invoices: InvoiceRow[] })
                       <EyeIcon className="h-3.5 w-3.5" />
                       View
                     </Link>
+                    <button
+                      type="button"
+                      disabled={downloadingId === inv.id}
+                      onClick={() => void handleDownload(inv.id)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-pacify-gold/40 text-pacify-gold hover:bg-pacify-gold/10 disabled:opacity-40 transition-colors"
+                      title="Download PDF"
+                    >
+                      <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                      {downloadingId === inv.id ? "…" : "Download"}
+                    </button>
                     <Link
                       href={`/invoice-generator?id=${inv.id}`}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-pacify-gold text-pacify-black hover:bg-pacify-gold/90 transition-colors"

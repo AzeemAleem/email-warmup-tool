@@ -160,3 +160,56 @@ export function buildBulletsFromPayload(
   }
   return out;
 }
+
+/** Build PDF export args from a saved draft. Returns null if qty/price incomplete. */
+export function buildInvoicePdfDataFromPayload(payload: InvoiceDraftPayload) {
+  const qty = parseInt(payload.qtyRaw, 10);
+  const unitPrice = parseFloat(payload.priceRaw);
+  if (!Number.isInteger(qty) || qty < 1) return null;
+  if (!Number.isFinite(unitPrice) || unitPrice < 0) return null;
+
+  const optionTables = payload.includePage2
+    ? payload.optTables
+        .map((t) => {
+          const rows = t.rows
+            .map((cells) => t.columns.map((_, i) => (cells[i] ?? "").trim()))
+            .filter((cells) => cells.some((c) => c.length > 0));
+          if (rows.length === 0 || t.columns.length === 0) return null;
+          return {
+            title: t.title.trim() || "Option Pricing Comparison",
+            columns: t.columns.map((c) => c.trim() || "—"),
+            rows,
+          };
+        })
+        .filter((t): t is NonNullable<typeof t> => t != null)
+    : [];
+
+  const volRows = payload.includePage2
+    ? payload.volRows
+        .map((r) => {
+          const q = parseInt(r.qty, 10);
+          const p = parseFloat(r.unitPrice);
+          if (!Number.isInteger(q) || q < 1 || !Number.isFinite(p) || p < 0) {
+            return null;
+          }
+          return { quantity: q, unitPrice: p };
+        })
+        .filter((r): r is { quantity: number; unitPrice: number } => r != null)
+    : [];
+
+  return {
+    invoiceId: payload.quoteNo,
+    date: payload.dateStr,
+    validUntil: payload.validStr,
+    clientName: payload.clientName.trim() || "Client",
+    clientEmail: payload.clientEmail.trim(),
+    orderTitle: payload.orderTitle.trim() || "Custom Packaging Order",
+    bullets: buildBulletsFromPayload(payload),
+    quantity: qty,
+    currency: payload.currency,
+    unitPrice,
+    totalAmount: qty * unitPrice,
+    optionTables: optionTables.length > 0 ? optionTables : null,
+    volumeTiers: volRows.length > 0 ? { rows: volRows } : null,
+  };
+}

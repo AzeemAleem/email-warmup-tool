@@ -44,6 +44,14 @@ export default async function ProjectDetailPage({
       ? (project.requirements as string[])
       : [],
     notes: project.notes,
+    followUpStatus: project.followUpStatus ?? "ACTIVE",
+    followUpStep: project.followUpStep ?? 0,
+    nextFollowUpOn: project.nextFollowUpOn
+      ? project.nextFollowUpOn.toISOString()
+      : null,
+    lastFollowUpAt: project.lastFollowUpAt
+      ? project.lastFollowUpAt.toISOString()
+      : null,
     createdAt: project.createdAt.toISOString(),
     updatedAt: project.updatedAt.toISOString(),
   };

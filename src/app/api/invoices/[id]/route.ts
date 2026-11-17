@@ -69,7 +69,19 @@ export async function GET(
 ) {
   try {
     await requireAuth();
-    const invoice = await prisma.invoice.findUnique({ where: { id: params.id } });
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: params.id },
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+            clientId: true,
+            client: { select: { id: true, name: true, email: true } },
+          },
+        },
+      },
+    });
     if (!invoice) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }

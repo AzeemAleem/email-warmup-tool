@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/session";
 import { z } from "zod";
+import { initialFollowUpFields } from "@/lib/followUp/schedule";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -69,6 +70,8 @@ export async function POST(
       requirements,
       notes,
     } = parsed.data;
+    const createdAt = new Date();
+    const followUp = initialFollowUpFields(createdAt, status);
     const project = await prisma.project.create({
       data: {
         clientId: params.id,
@@ -81,6 +84,11 @@ export async function POST(
         shippingAddress: shippingAddress?.trim() || null,
         requirements: requirements.filter((r) => r.trim().length > 0),
         notes: notes?.trim() || null,
+        createdAt,
+        followUpStatus: followUp.followUpStatus,
+        followUpStep: followUp.followUpStep,
+        nextFollowUpOn: followUp.nextFollowUpOn,
+        lastFollowUpAt: followUp.lastFollowUpAt,
       },
     });
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/session";
 import { z } from "zod";
+import { computeNextFollowUpOn } from "@/lib/followUp/schedule";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -71,6 +72,28 @@ export async function PATCH(
       requirements,
       notes,
     } = parsed.data;
+    const followUpPatch: {
+      followUpStatus?: string;
+      nextFollowUpOn?: Date | null;
+    } = {};
+    if (status === "CANCELLED" || status === "COMPLETED") {
+      followUpPatch.followUpStatus = "PAUSED";
+      followUpPatch.nextFollowUpOn = null;
+    } else if (
+      status !== undefined &&
+      (existing.status === "CANCELLED" || existing.status === "COMPLETED") &&
+      existing.followUpStatus === "PAUSED" &&
+      existing.followUpStep < 6
+    ) {
+      // Re-opened project: resume cadence if it was only paused by completion
+      followUpPatch.followUpStatus = "ACTIVE";
+      followUpPatch.nextFollowUpOn = computeNextFollowUpOn({
+        stepCompleted: existing.followUpStep,
+        lastFollowUpAt: existing.lastFollowUpAt,
+        createdAt: existing.createdAt,
+      });
+    }
+
     const updated = await prisma.project.update({
       where: { id: params.projectId },
       data: {
@@ -87,6 +110,7 @@ export async function PATCH(
           ? { requirements: requirements.filter((r) => r.trim().length > 0) }
           : {}),
         ...(notes !== undefined ? { notes: notes.trim() || null } : {}),
+        ...followUpPatch,
       },
     });
 

@@ -10,7 +10,10 @@ import {
   PencilSquareIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
+import { buildInvoicePdfDataFromPayload } from "@/lib/invoice/checklist";
+import type { InvoiceDraftPayload } from "@/lib/invoice/draft";
 import { clsx } from "clsx";
 import { formatPkrTotal, formatUsd } from "@/lib/cost/currency";
 import { calculationEditHref } from "@/lib/cost/savedCalculation";
@@ -522,6 +525,7 @@ function InvoiceRow({
   onDelete: () => void;
 }) {
   const [deleting, setDeleting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   async function handleDelete(e: React.MouseEvent) {
     e.preventDefault();
@@ -544,6 +548,28 @@ function InvoiceRow({
       alert("Failed to delete invoice. Check your database connection.");
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleDownload(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}`);
+      if (!res.ok) throw new Error("load failed");
+      const data = (await res.json()) as { payload: InvoiceDraftPayload };
+      const pdfData = buildInvoicePdfDataFromPayload(data.payload);
+      if (!pdfData) {
+        alert("This invoice is missing quantity or unit price, so PDF cannot be generated.");
+        return;
+      }
+      const { exportInvoicePdf } = await import("@/lib/invoice/exportInvoicePdf");
+      await exportInvoicePdf(pdfData);
+    } catch {
+      alert("Failed to download invoice PDF");
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -578,6 +604,15 @@ function InvoiceRow({
           </div>
         )}
       </Link>
+      <button
+        type="button"
+        onClick={handleDownload}
+        disabled={downloading}
+        title="Download PDF"
+        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-pacify-gold/10 hover:text-pacify-gold transition-colors shrink-0 disabled:opacity-40"
+      >
+        <ArrowDownTrayIcon className="h-4 w-4" />
+      </button>
       <button
         type="button"
         onClick={handleDelete}

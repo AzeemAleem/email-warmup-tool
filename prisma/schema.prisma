@@ -139,18 +139,43 @@ model Project {
   requirements Json          @default("[]")
   /// Additional notes / context for this project
   notes        String?
+  /// ACTIVE | PAUSED | DEAD — client outreach cadence
+  followUpStatus  String    @default("ACTIVE")
+  /// How many follow-ups already logged (0–6)
+  followUpStep    Int       @default(0)
+  /// Next Monday due date (null when PAUSED/DEAD)
+  nextFollowUpOn  DateTime?
+  lastFollowUpAt  DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
   calculations Calculation[]
   invoices     Invoice[]
   actualExpense ActualExpense?
+  followUps    ProjectFollowUp[]
 
   @@index([clientId])
   @@index([status])
   @@index([dealType])
   @@index([createdAt])
   @@index([trackingId])
+  @@index([followUpStatus])
+  @@index([nextFollowUpOn])
+}
+
+/// Logged client outreach against a project follow-up cadence
+model ProjectFollowUp {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  /// 1–6
+  step      Int
+  doneAt    DateTime @default(now())
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+  @@index([doneAt])
 }
 
 /// Real post-order expense vs estimation (calculation / invoice)
