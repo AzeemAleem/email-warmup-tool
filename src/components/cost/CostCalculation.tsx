@@ -2012,6 +2012,25 @@ export function CostCalculation({
                     {formatLength(Number(shipping.meta?.openHeightIn ?? 0), "in")}{" "}
                     in
                   </p>
+                  {Number(shipping.meta?.weightOpenWidthIn ?? 0) > 0 &&
+                    (Number(shipping.meta?.weightOpenWidthIn) !==
+                      Number(shipping.meta?.openWidthIn) ||
+                      Number(shipping.meta?.weightOpenHeightIn) !==
+                        Number(shipping.meta?.openHeightIn)) && (
+                      <p className="text-gray-500 mt-1 text-[11px] tabular-nums">
+                        Weight size:{" "}
+                        {formatLength(
+                          Number(shipping.meta?.weightOpenWidthIn ?? 0),
+                          "in",
+                        )}{" "}
+                        ×{" "}
+                        {formatLength(
+                          Number(shipping.meta?.weightOpenHeightIn ?? 0),
+                          "in",
+                        )}{" "}
+                        in (open W + 2×H)
+                      </p>
+                    )}
                 </div>
               )}
               <div>
@@ -2053,6 +2072,27 @@ export function CostCalculation({
                     </p>
                   )}
               </div>
+              {(config.shipping.weightMode ?? "actual") === "actual" && (
+                <div>
+                  <label className="block text-gray-600 mb-1">GSM</label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="1"
+                    min="1"
+                    value={config.weight.gsm}
+                    onChange={(e) => {
+                      const n = Number(e.target.value);
+                      if (!Number.isFinite(n) || n <= 0) return;
+                      updateWeight({ gsm: n });
+                    }}
+                    className={inputCls}
+                  />
+                  <p className="mt-1 text-[10px] text-gray-600">
+                    Default {DEFAULT_COST_CONFIG.weight.gsm}
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="block text-gray-600 mb-1">Rate / kg (PKR)</label>
                 <input

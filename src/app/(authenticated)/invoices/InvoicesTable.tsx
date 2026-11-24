@@ -110,7 +110,6 @@ export function InvoicesTable({ invoices: initial }: { invoices: InvoiceRow[] })
               <th className="text-left font-medium px-4 py-3">Client</th>
               <th className="text-left font-medium px-4 py-3 hidden md:table-cell">Order</th>
               <th className="text-right font-medium px-4 py-3">Amount</th>
-              <th className="text-left font-medium px-4 py-3 hidden sm:table-cell">Updated</th>
               <th className="text-right font-medium px-4 py-3">Actions</th>
             </tr>
           </thead>
@@ -141,6 +140,9 @@ export function InvoicesTable({ invoices: initial }: { invoices: InvoiceRow[] })
                   {inv.clientEmail && (
                     <p className="text-xs text-gray-500 truncate">{inv.clientEmail}</p>
                   )}
+                  <p className="text-[10px] text-gray-600 mt-0.5">
+                    Updated {fmtDate(inv.updatedAt)}
+                  </p>
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell max-w-[220px]">
                   <p className="text-gray-300 truncate">{inv.orderTitle || "—"}</p>
@@ -154,43 +156,55 @@ export function InvoicesTable({ invoices: initial }: { invoices: InvoiceRow[] })
                     <span className="text-gray-600">—</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-gray-500 text-xs hidden sm:table-cell whitespace-nowrap">
-                  {fmtDate(inv.updatedAt)}
-                </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="flex items-center justify-end gap-1">
                     <Link
                       href={`/invoices/${inv.id}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-foreground transition-colors"
+                      title="View"
+                      aria-label="View"
+                      className="group relative inline-flex items-center justify-center p-2 rounded-md border border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-foreground transition-colors"
                     >
-                      <EyeIcon className="h-3.5 w-3.5" />
-                      View
+                      <EyeIcon className="h-4 w-4" />
+                      <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-gray-950 px-2 py-1 text-[10px] font-medium text-gray-200 opacity-0 shadow-lg ring-1 ring-gray-700 transition-opacity group-hover:opacity-100">
+                        View
+                      </span>
                     </Link>
                     <button
                       type="button"
                       disabled={downloadingId === inv.id}
                       onClick={() => void handleDownload(inv.id)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-pacify-gold/40 text-pacify-gold hover:bg-pacify-gold/10 disabled:opacity-40 transition-colors"
-                      title="Download PDF"
+                      title="Download"
+                      aria-label="Download"
+                      className="group relative inline-flex items-center justify-center p-2 rounded-md border border-pacify-gold/40 text-pacify-gold hover:bg-pacify-gold/10 disabled:opacity-40 transition-colors"
                     >
-                      <ArrowDownTrayIcon className="h-3.5 w-3.5" />
-                      {downloadingId === inv.id ? "…" : "Download"}
+                      <ArrowDownTrayIcon className="h-4 w-4" />
+                      <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-gray-950 px-2 py-1 text-[10px] font-medium text-gray-200 opacity-0 shadow-lg ring-1 ring-gray-700 transition-opacity group-hover:opacity-100">
+                        {downloadingId === inv.id ? "Downloading…" : "Download"}
+                      </span>
                     </button>
                     <Link
                       href={`/invoice-generator?id=${inv.id}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-pacify-gold text-pacify-black hover:bg-pacify-gold/90 transition-colors"
+                      title="Edit"
+                      aria-label="Edit"
+                      className="group relative inline-flex items-center justify-center p-2 rounded-md bg-pacify-gold text-pacify-black hover:bg-pacify-gold/90 transition-colors"
                     >
-                      <PencilSquareIcon className="h-3.5 w-3.5" />
-                      Edit
+                      <PencilSquareIcon className="h-4 w-4" />
+                      <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-gray-950 px-2 py-1 text-[10px] font-medium text-gray-200 opacity-0 shadow-lg ring-1 ring-gray-700 transition-opacity group-hover:opacity-100">
+                        Edit
+                      </span>
                     </Link>
                     <button
                       type="button"
                       disabled={deletingId === inv.id}
                       onClick={() => void handleDelete(inv.id)}
-                      className="p-1.5 rounded-md text-gray-500 hover:text-red-400 hover:bg-red-400/10 disabled:opacity-40 transition-colors"
                       title="Delete"
+                      aria-label="Delete"
+                      className="group relative inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-red-400 hover:bg-red-400/10 disabled:opacity-40 transition-colors"
                     >
                       <TrashIcon className="h-4 w-4" />
+                      <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-gray-950 px-2 py-1 text-[10px] font-medium text-gray-200 opacity-0 shadow-lg ring-1 ring-gray-700 transition-opacity group-hover:opacity-100">
+                        Delete
+                      </span>
                     </button>
                   </div>
                 </td>

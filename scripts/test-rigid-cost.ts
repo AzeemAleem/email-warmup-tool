@@ -871,10 +871,11 @@ assert.equal(
 // ── Weight + shipping + USD ────────────────────────────────────────────────
 {
   const perKg = calcWeightPerUnitKg(12, 27, DEFAULT_COST_CONFIG.weight)!;
-  assert.ok(Math.abs(perKg - (12 * 27 * 1600) / 15500 / 100) < 1e-12);
-  assert.equal(DEFAULT_COST_CONFIG.weight.gsm, 1600);
+  assert.ok(Math.abs(perKg - (12 * 27 * 1800) / 15500 / 100) < 1e-12);
+  assert.equal(DEFAULT_COST_CONFIG.weight.gsm, 1800);
   assert.equal(calcTotalWeightKg(perKg, 200)!, perKg * 200);
 
+  // Without closed box height → weight uses open size as-is
   const ship = calcShippingCost(
     12,
     27,
@@ -888,6 +889,26 @@ assert.equal(
     roundMoney(calcTotalWeightKg(perKg, 200)! * 3000),
   );
   assert.equal(ship12x27(200), ship.total);
+  assert.equal(ship.weightOpenWidthIn, 12);
+  assert.equal(ship.weightOpenHeightIn, 27);
+
+  // With box H=3 in: actual weight uses (12 + 2×3) × 27 = 18 × 27
+  const shipAdj = calcShippingCost(
+    12,
+    27,
+    200,
+    DEFAULT_COST_CONFIG.weight,
+    DEFAULT_COST_CONFIG.shipping,
+    { lengthCm: 12 * 2.54, widthCm: 9 * 2.54, heightCm: 3 * 2.54 },
+  )!;
+  const perKgAdj = calcWeightPerUnitKg(18, 27, DEFAULT_COST_CONFIG.weight)!;
+  assert.ok(Math.abs(shipAdj.weightOpenWidthIn - 18) < 1e-9);
+  assert.equal(shipAdj.weightOpenHeightIn, 27);
+  assert.ok(Math.abs(shipAdj.perUnitKg - perKgAdj) < 1e-6);
+  assert.equal(
+    shipAdj.total,
+    roundMoney(calcTotalWeightKg(perKgAdj, 200)! * 3000),
+  );
 
   // Different open size changes weight/shipping
   const other = calcShippingCost(

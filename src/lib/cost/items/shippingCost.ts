@@ -4,6 +4,7 @@ import { DEFAULT_AIR_CARTONS } from "../airCartons";
 import { roundMoney } from "../currency";
 import type { ClosedBoxCm, CostItemModule, CostLineResult } from "../types";
 import {
+  actualWeightOpenSizeIn,
   calcTotalWeightKg,
   calcVolumetricWeightPerUnitKg,
   calcWeightPerUnitKg,
@@ -79,6 +80,9 @@ export function calcShippingCost(
   perUnit: number;
   ratePerKg: number;
   weightMode: ShippingWeightMode;
+  /** Open size used in actual-weight formula (may include +2× box H on width) */
+  weightOpenWidthIn: number;
+  weightOpenHeightIn: number;
   airCarton: AirCartonPackingResult | null;
   airCartonOptions: AirCartonPackingResult[];
 } | null {
@@ -93,6 +97,9 @@ export function calcShippingCost(
   if (!(ratePerKg >= 0) || !Number.isFinite(ratePerKg)) return null;
 
   let perUnitKg: number | null = null;
+  /** Adjusted open size used for actual-weight formula only */
+  let weightOpenWidthIn = openWidthIn;
+  let weightOpenHeightIn = openHeightIn;
 
   if (weightMode === "volumetric") {
     if (
@@ -112,9 +119,23 @@ export function calcShippingCost(
       volumetricDivisor,
     );
   } else {
-    perUnitKg = calcWeightPerUnitKg(
+    // Actual weight: (openW + 2×boxH) × openH × GSM / divisor / scale
+    const closedHeightIn =
+      closedBoxCm &&
+      Number.isFinite(closedBoxCm.heightCm) &&
+      closedBoxCm.heightCm > 0
+        ? closedBoxCm.heightCm / 2.54
+        : null;
+    const weightSize = actualWeightOpenSizeIn(
       openWidthIn,
       openHeightIn,
+      closedHeightIn,
+    );
+    weightOpenWidthIn = weightSize.widthIn;
+    weightOpenHeightIn = weightSize.heightIn;
+    perUnitKg = calcWeightPerUnitKg(
+      weightOpenWidthIn,
+      weightOpenHeightIn,
       weightConfig,
     );
   }
@@ -165,6 +186,8 @@ export function calcShippingCost(
     perUnit,
     ratePerKg,
     weightMode,
+    weightOpenWidthIn,
+    weightOpenHeightIn,
     airCarton,
     airCartonOptions,
   };
@@ -194,8 +217,12 @@ export const shippingCostItem: CostItemModule = {
       meta: {
         status: "ok",
         weightMode: result.weightMode,
+        // Displayed open size (unchanged flat layout)
         openWidthIn: openSizeIn.openWidthIn,
         openHeightIn: openSizeIn.openHeightIn,
+        // Size actually used in actual-weight formula
+        weightOpenWidthIn: result.weightOpenWidthIn,
+        weightOpenHeightIn: result.weightOpenHeightIn,
         lengthCm: closedBoxCm?.lengthCm ?? 0,
         widthCm: closedBoxCm?.widthCm ?? 0,
         heightCm: closedBoxCm?.heightCm ?? 0,

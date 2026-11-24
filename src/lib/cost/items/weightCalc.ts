@@ -1,9 +1,32 @@
 import type { WeightConfig } from "../costConfig";
 
 /**
+ * Dimensions used for rigid-box *actual* weight only (does not change displayed open size).
+ * weightW = openWidth + 2 × closed box height (inches)
+ * weightH = openHeight (unchanged)
+ * Example: open 12×27, box H=3 → weight uses 18×27
+ */
+export function actualWeightOpenSizeIn(
+  openWidthIn: number,
+  openHeightIn: number,
+  closedHeightIn: number | null | undefined,
+): { widthIn: number; heightIn: number } {
+  const h =
+    closedHeightIn != null &&
+    Number.isFinite(closedHeightIn) &&
+    closedHeightIn > 0
+      ? closedHeightIn
+      : 0;
+  return {
+    widthIn: openWidthIn + 2 * h,
+    heightIn: openHeightIn,
+  };
+}
+
+/**
  * Per-unit weight (kg) from open size in inches (no art padding):
  * (openW × openH × GSM / DIVISOR) / SCALE
- * e.g. (12 × 27 × 1600 / 15500) / 100
+ * e.g. (12 × 27 × 1800 / 15500) / 100
  */
 export function calcWeightPerUnitKg(
   openWidthIn: number,
